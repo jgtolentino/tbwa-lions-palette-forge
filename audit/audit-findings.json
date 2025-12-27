@@ -1,0 +1,306 @@
+{
+  "metadata": {
+    "auditDate": "2025-12-28",
+    "repository": "https://github.com/jgtolentino/tbwa-lions-palette-forge",
+    "branch": "main",
+    "commit": "69bf316",
+    "overallRiskRating": "MEDIUM"
+  },
+  "summary": {
+    "totalVulnerabilities": 12,
+    "criticalCount": 1,
+    "highCount": 3,
+    "moderateCount": 5,
+    "lowCount": 3,
+    "eslintErrors": 70,
+    "typeScriptErrors": 0,
+    "bundleSizeKB": 1017.94,
+    "testCoverage": 0
+  },
+  "vulnerabilities": [
+    {
+      "id": "VULN-001",
+      "severity": "critical",
+      "package": "form-data",
+      "version": "4.0.0-4.0.3",
+      "title": "Unsafe random function for boundary generation",
+      "advisory": "GHSA-fjxv-7rqg-78g4",
+      "fixedIn": "4.0.4",
+      "file": "node_modules/form-data",
+      "remediation": "npm update form-data"
+    },
+    {
+      "id": "VULN-002",
+      "severity": "high",
+      "package": "axios",
+      "version": "1.10.0",
+      "title": "DoS attack through lack of data size check",
+      "advisory": "GHSA-4hjh-wcwx-xvwj",
+      "cvss": 7.5,
+      "fixedIn": "1.12.0",
+      "file": "node_modules/axios",
+      "remediation": "npm install axios@latest"
+    },
+    {
+      "id": "VULN-003",
+      "severity": "high",
+      "package": "glob",
+      "version": "10.2.0-10.4.5",
+      "title": "Command injection via -c/--cmd",
+      "advisory": "GHSA-5j98-mcp5-4vw2",
+      "cvss": 7.5,
+      "fixedIn": "10.5.0",
+      "file": "node_modules/glob",
+      "remediation": "npm update glob"
+    },
+    {
+      "id": "VULN-004",
+      "severity": "high",
+      "package": "playwright",
+      "version": "<1.55.1",
+      "title": "SSL certificate verification bypass",
+      "advisory": "GHSA-7mvr-c777-76hp",
+      "fixedIn": "1.55.1",
+      "file": "node_modules/playwright",
+      "remediation": "npm install playwright@latest --save-dev"
+    },
+    {
+      "id": "VULN-005",
+      "severity": "moderate",
+      "package": "vite",
+      "version": "5.4.1",
+      "title": "Multiple server.fs.deny bypass vulnerabilities",
+      "advisory": "Multiple",
+      "fixedIn": "6.x",
+      "file": "node_modules/vite",
+      "remediation": "npm install vite@latest --save-dev"
+    },
+    {
+      "id": "VULN-006",
+      "severity": "moderate",
+      "package": "esbuild",
+      "version": "<=0.24.2",
+      "title": "Development server request vulnerability",
+      "advisory": "GHSA-67mh-4wv8-2f99",
+      "fixedIn": "0.24.3",
+      "file": "node_modules/esbuild",
+      "remediation": "npm update esbuild"
+    },
+    {
+      "id": "VULN-007",
+      "severity": "moderate",
+      "package": "@babel/runtime",
+      "version": "<7.26.10",
+      "title": "Inefficient RegExp complexity",
+      "advisory": "GHSA-968p-4wvh-cqc8",
+      "cvss": 6.2,
+      "fixedIn": "7.26.10",
+      "file": "node_modules/@babel/runtime",
+      "remediation": "npm update @babel/runtime"
+    },
+    {
+      "id": "VULN-008",
+      "severity": "moderate",
+      "package": "js-yaml",
+      "version": "4.0.0-4.1.0",
+      "title": "Prototype pollution in merge",
+      "advisory": "GHSA-mh29-5h37-fv8m",
+      "cvss": 5.3,
+      "fixedIn": "4.1.1",
+      "file": "node_modules/js-yaml",
+      "remediation": "npm update js-yaml"
+    },
+    {
+      "id": "VULN-009",
+      "severity": "moderate",
+      "package": "nanoid",
+      "version": "<3.3.8",
+      "title": "Predictable results with non-integer values",
+      "advisory": "GHSA-mwcw-c2x4-8c55",
+      "cvss": 4.3,
+      "fixedIn": "3.3.8",
+      "file": "node_modules/nanoid",
+      "remediation": "npm update nanoid"
+    },
+    {
+      "id": "VULN-010",
+      "severity": "low",
+      "package": "eslint",
+      "version": "9.9.0",
+      "title": "ReDoS in plugin-kit",
+      "advisory": "GHSA-xffm-g5w8-qvg7",
+      "fixedIn": "9.27.0",
+      "file": "node_modules/eslint",
+      "remediation": "npm update eslint"
+    },
+    {
+      "id": "VULN-011",
+      "severity": "low",
+      "package": "brace-expansion",
+      "version": "multiple",
+      "title": "ReDoS vulnerability",
+      "advisory": "GHSA-v6h2-p8h4-qcjw",
+      "cvss": 3.1,
+      "fixedIn": "latest",
+      "file": "node_modules/brace-expansion",
+      "remediation": "npm update brace-expansion"
+    },
+    {
+      "id": "VULN-012",
+      "severity": "low",
+      "package": "@eslint/plugin-kit",
+      "version": "<0.3.4",
+      "title": "ReDoS through ConfigCommentParser",
+      "advisory": "GHSA-xffm-g5w8-qvg7",
+      "fixedIn": "0.3.4",
+      "file": "node_modules/@eslint/plugin-kit",
+      "remediation": "npm update @eslint/plugin-kit"
+    }
+  ],
+  "codeQualityIssues": [
+    {
+      "id": "CQ-001",
+      "severity": "medium",
+      "type": "eslint",
+      "title": "Unused variables detection disabled",
+      "file": "eslint.config.js:26",
+      "description": "@typescript-eslint/no-unused-vars set to 'off'",
+      "recommendation": "Re-enable with warning level"
+    },
+    {
+      "id": "CQ-002",
+      "severity": "medium",
+      "type": "bundleSize",
+      "title": "Main bundle exceeds 500KB limit",
+      "file": "dist/assets/index-EMMUepm-.js",
+      "description": "Bundle size is 1017.94 KB (gzip: 295.94 KB)",
+      "recommendation": "Implement code splitting and lazy loading"
+    },
+    {
+      "id": "CQ-003",
+      "severity": "high",
+      "type": "testing",
+      "title": "No test suite configured",
+      "file": "package.json",
+      "description": "No test script, no test files detected",
+      "recommendation": "Configure Vitest and write unit tests"
+    },
+    {
+      "id": "CQ-004",
+      "severity": "low",
+      "type": "cleanup",
+      "title": "Backup directories in repository",
+      "file": "src.backup.*",
+      "description": "Two backup directories present in repository root",
+      "recommendation": "Remove backup directories"
+    },
+    {
+      "id": "CQ-005",
+      "severity": "medium",
+      "type": "component",
+      "title": "Large component files",
+      "file": "src/pages/VideoAnalysis.tsx",
+      "description": "Component file exceeds 30KB",
+      "recommendation": "Decompose into smaller components"
+    }
+  ],
+  "securityIssues": [
+    {
+      "id": "SEC-001",
+      "severity": "medium",
+      "type": "configuration",
+      "title": "Environment variables exposed to frontend",
+      "file": ".env.example",
+      "description": "VITE_* prefixed variables are embedded in frontend bundle",
+      "recommendation": "Move sensitive credentials to backend-only environment variables"
+    },
+    {
+      "id": "SEC-002",
+      "severity": "medium",
+      "type": "websocket",
+      "title": "WebSocket protocol not enforced as secure",
+      "file": "src/config/mcp-integration.ts:82",
+      "description": "Configuration allows ws:// protocol",
+      "recommendation": "Enforce wss:// in production"
+    },
+    {
+      "id": "SEC-003",
+      "severity": "low",
+      "type": "headers",
+      "title": "Missing security headers",
+      "file": "index.html",
+      "description": "No CSP, X-Frame-Options, or HSTS headers",
+      "recommendation": "Add security headers or configure at deployment level"
+    }
+  ],
+  "architectureIssues": [
+    {
+      "id": "ARCH-001",
+      "severity": "medium",
+      "type": "mock",
+      "title": "Mock responses in production component",
+      "file": "src/components/CampaignAnalysisViewer.tsx:66-75",
+      "description": "generateMockQueryResponse function used in component",
+      "recommendation": "Route through actual API or use feature flag"
+    },
+    {
+      "id": "ARCH-002",
+      "severity": "low",
+      "type": "state",
+      "title": "No dedicated client state management",
+      "file": "src/",
+      "description": "Using component state only, no Zustand/Redux",
+      "recommendation": "Consider Zustand for complex client state"
+    }
+  ],
+  "positiveFindings": [
+    {
+      "id": "POS-001",
+      "area": "security",
+      "title": "No hardcoded secrets",
+      "description": "No API keys or credentials found in source code"
+    },
+    {
+      "id": "POS-002",
+      "area": "security",
+      "title": ".env excluded from git",
+      "description": ".gitignore properly excludes .env files"
+    },
+    {
+      "id": "POS-003",
+      "area": "security",
+      "title": "Production guard implemented",
+      "description": "production-guard.ts prevents mock data in production"
+    },
+    {
+      "id": "POS-004",
+      "area": "quality",
+      "title": "Clean TypeScript compilation",
+      "description": "Zero TypeScript errors on noEmit check"
+    },
+    {
+      "id": "POS-005",
+      "area": "ci",
+      "title": "Backend verification in CI",
+      "description": "GitHub Actions workflow verifies backend integration"
+    },
+    {
+      "id": "POS-006",
+      "area": "quality",
+      "title": "Pre-commit hooks configured",
+      "description": "Husky enforces backend verification on commit"
+    },
+    {
+      "id": "POS-007",
+      "area": "architecture",
+      "title": "Modern tech stack",
+      "description": "React 18, TypeScript 5.5, Vite, shadcn-ui, Tailwind"
+    },
+    {
+      "id": "POS-008",
+      "area": "accessibility",
+      "title": "Accessible UI components",
+      "description": "Radix UI primitives provide ARIA support"
+    }
+  ]
+}
