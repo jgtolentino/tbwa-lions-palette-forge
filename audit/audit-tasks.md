@@ -7,216 +7,243 @@
 
 ## Immediate (Blockers / Before Production)
 
-### Security Patches (Critical Priority)
+### 1. Security Patches (Critical Priority)
+
 - [ ] **VULN-001**: Update `form-data` to 4.0.4+ (via axios update)
   - Command: `npm install axios@latest`
   - Severity: CRITICAL
-  - Effort: 30 minutes
+  - Effort: ~0.5 hour
 
 - [ ] **VULN-002**: Update `axios` to 1.12.0+
   - Command: `npm install axios@latest`
   - Severity: HIGH
-  - Effort: 30 minutes (includes testing)
+  - Effort: ~0.5 hour
 
-- [ ] **VULN-003**: Update `glob` to 10.5.0+
-  - Command: `npm update glob`
-  - Severity: HIGH
-  - Effort: 15 minutes
-
-- [ ] **VULN-004**: Update `playwright` to 1.55.1+
+- [ ] **VULN-003**: Update `playwright` to latest stable (SSL bypass fix)
   - Command: `npm install playwright@latest --save-dev`
   - Severity: HIGH
-  - Effort: 30 minutes (verify e2e tests)
+  - Effort: ~0.5 hour
 
-### Build & Deploy Safety
-- [ ] **VULN-005**: Update `vite` to latest stable
+- [ ] **VULN-004**: Update `vite` to latest stable (dev server bypass fixes)
   - Command: `npm install vite@latest --save-dev`
-  - Severity: MODERATE
-  - Effort: 1 hour (check for breaking changes)
+  - Severity: HIGH
+  - Effort: ~0.5 hour
 
-- [ ] Run `npm audit fix` to auto-fix remaining vulnerabilities
-  - Effort: 15 minutes
+- [ ] **VULN-005**: Apply `npm audit fix` for remaining moderate/low issues
+  - Command: `npm audit fix`
+  - Severity: MEDIUM
+  - Effort: ~0.5 hour
 
-### Repository Cleanup
-- [ ] **CQ-004**: Remove backup directories
-  - Files: `src.backup.20250710_130329/`, `src.backup.pre-strip.20250710_130700/`
-  - Command: `rm -rf src.backup.*`
-  - Effort: 5 minutes
+### 2. Secrets & Env Hardening
+
+- [ ] **SEC-001**: Remove any actual API keys from `VITE_*` env usage (frontend)
+  - Action:
+    - Ensure MCP/Claude/DB keys are **never** exposed as `VITE_*`
+    - Move all secrets to backend-only env vars
+  - Severity: CRITICAL
+  - Effort: ~1 hour
+
+- [ ] **SEC-002**: Verify `.env`, `.env.local`, `.env.*` are fully ignored and clean history if needed
+  - Action:
+    - Confirm `.gitignore` covers all env files
+    - If any secrets ever committed, rotate and (optionally) purge history
+  - Severity: HIGH
+  - Effort: ~1 hour
+
+### 3. Repo Cleanup (Production Guard)
+
+- [ ] **CLEAN-001**: Remove legacy backup directories and mock-only code from main tree
+  - Action: `rm -rf src.backup.*` and any unused mock folders
+  - Severity: MEDIUM
+  - Effort: ~0.5 hour
 
 ---
 
 ## Short-term (1-2 Sprints)
 
-### Testing Infrastructure (High Priority)
-- [ ] **CQ-003**: Configure Vitest testing framework
-  - Install: `npm install -D vitest @testing-library/react @testing-library/jest-dom`
-  - Configure: Create `vitest.config.ts`
-  - Add test script to `package.json`
-  - Effort: 2 hours
+### 4. HTTP & Browser-Side Security
 
-- [ ] Write unit tests for API services
-  - Files: `src/api/ces-backend.ts`, `src/api/extraction.ts`
-  - Target: 80% coverage
-  - Effort: 4 hours
+- [ ] **SEC-003**: Implement basic security headers (CSP, X-Frame-Options, HSTS) at the serving layer
+  - Action:
+    - Add CSP with script/style-src restrictions
+    - Add `X-Frame-Options: DENY` or equivalent
+    - Enable HSTS via host config
+  - Severity: HIGH
+  - Effort: ~3 hours
 
-- [ ] Write unit tests for business logic services
-  - Files: `src/services/askCesApi.ts`, `src/services/mcp-service-adapter.ts`
-  - Target: 80% coverage
-  - Effort: 6 hours
+- [ ] **SEC-004**: Lock down CORS policy on backend
+  - Action:
+    - Restrict origins to production domains
+    - Remove `*` wildcard if present
+  - Severity: HIGH
+  - Effort: ~2 hours
 
-- [ ] Write component tests for critical UI
-  - Files: `CampaignAnalysisViewer.tsx`, `VideoAnalysis.tsx`
-  - Target: Key interaction flows
-  - Effort: 6 hours
+- [ ] **SEC-005**: Enforce WSS for WebSockets in production
+  - Action:
+    - Use `wss://` for `VITE_WEBSOCKET_URL` in prod
+    - Add auth/ACL on WebSocket channels
+  - Severity: HIGH
+  - Effort: ~2 hours
 
-### CI/CD Improvements
-- [ ] Add npm audit to GitHub Actions workflow
-  - File: `.github/workflows/backend-verification.yml`
-  - Fail on HIGH/CRITICAL vulnerabilities
-  - Effort: 1 hour
+- [ ] **SEC-006**: Implement server-side file size & type validation for uploads
+  - Action:
+    - Enforce limits consistent with `VITE_MAX_FILE_SIZE`
+    - Restrict MIME types; reject unknown/binary blobs by default
+  - Severity: HIGH
+  - Effort: ~3 hours
 
-- [ ] Add test execution to CI pipeline
-  - Trigger on PR and push to main
-  - Report coverage
-  - Effort: 2 hours
+### 5. API & Input Validation
 
-### Code Quality
-- [ ] **CQ-001**: Re-enable unused variable detection
-  - File: `eslint.config.js`
-  - Change `"@typescript-eslint/no-unused-vars": "off"` to `"warn"`
-  - Fix resulting warnings
-  - Effort: 2 hours
+- [ ] **VAL-001**: Standardize Zod (or equivalent) validation for all user input paths
+  - Action:
+    - Wrap all form submits and API payloads with shared schema validators
+  - Severity: MEDIUM
+  - Effort: ~4 hours
 
-- [ ] Fix ESLint `no-explicit-any` violations in active source
-  - Files: Various in `src/`
-  - Add proper TypeScript types
-  - Effort: 4 hours
+- [ ] **VAL-002**: Sanitize all user-facing rich content (markdown/HTML)
+  - Action:
+    - Use a sanitizer (e.g., DOMPurify) on any untrusted HTML/markdown
+  - Severity: MEDIUM
+  - Effort: ~3 hours
 
-### Security Headers
-- [ ] **SEC-003**: Add security headers
-  - Option A: Add meta tags to `index.html`
-  - Option B: Configure via Vercel/hosting headers
-  - Include: CSP, X-Frame-Options, X-Content-Type-Options
-  - Effort: 2 hours
+### 6. Error Handling & Logging
+
+- [ ] **ERR-001**: Introduce React Error Boundaries for page-level failures
+  - Severity: MEDIUM
+  - Effort: ~3 hours
+
+- [ ] **ERR-002**: Configure Sentry to scrub PII and secrets from logs
+  - Action:
+    - Add before-send hooks to sanitize events
+  - Severity: MEDIUM
+  - Effort: ~2 hours
+
+### 7. CI / Automation
+
+- [ ] **CI-001**: Add CI job for `npm run lint && npm run build`
+  - Severity: MEDIUM
+  - Effort: ~2 hours
+
+- [ ] **CI-002**: Add CI job for `npm audit --audit-level=high` and fail on HIGH/CRITICAL
+  - Severity: MEDIUM
+  - Effort: ~2 hours
 
 ---
 
 ## Medium-term (3-4 Sprints)
 
-### Performance Optimization
-- [ ] **CQ-002**: Implement route-based code splitting
-  - Use `React.lazy()` for page components
-  - Add `Suspense` boundaries
-  - Target: Main bundle < 500KB
-  - Effort: 4 hours
+### 8. Testing Strategy
 
-- [ ] Lazy load heavy dependencies
-  - Files: recharts, framer-motion imports
-  - Use dynamic imports where applicable
-  - Effort: 3 hours
+- [ ] **TEST-001**: Introduce unit test framework (Vitest or Jest)
+  - Action:
+    - Add `npm test` script and initial configuration
+  - Severity: MEDIUM
+  - Effort: ~6 hours
 
-- [ ] Add bundle size monitoring to CI
-  - Tools: `@bundle-analyzer/webpack-plugin` or `vite-bundle-analyzer`
-  - Set size budgets
-  - Effort: 2 hours
+- [ ] **TEST-002**: Create a critical-path smoke test suite (happy-path flows)
+  - Coverage Targets: navigation, key forms, MCP invocation
+  - Severity: MEDIUM
+  - Effort: ~8 hours
 
-### Architecture Improvements
-- [ ] **ARCH-001**: Remove mock responses from components
-  - File: `src/components/CampaignAnalysisViewer.tsx`
-  - Route through actual API or feature flag
-  - Effort: 4 hours
+- [ ] **TEST-003**: Add Playwright E2E tests for end-to-end UX flows
+  - Severity: MEDIUM
+  - Effort: ~8 hours
 
-- [ ] **CQ-005**: Decompose large components
-  - Target: `VideoAnalysis.tsx` (30KB), `CampaignDashboard.tsx` (22KB)
-  - Extract into sub-components
-  - Effort: 8 hours
+### 9. Architecture & State Management
 
-- [ ] Add error boundaries throughout application
-  - Wrap route components
-  - Add fallback UI
-  - Log errors to Sentry (already configured)
-  - Effort: 4 hours
+- [ ] **ARCH-001**: Centralize API layer with a repository/service pattern
+  - Action:
+    - Move axios calls into `/src/api` or `/src/services` only
+    - Use typed contracts for all requests/responses
+  - Severity: MEDIUM
+  - Effort: ~8 hours
 
-### Testing Expansion
-- [ ] Implement E2E tests with Playwright
-  - Cover: Login, Video Upload, Campaign Analysis
-  - File: Create `e2e/` directory
-  - Effort: 8 hours
+- [ ] **ARCH-002**: Introduce a clear client state solution (e.g., Zustand/Redux) where needed
+  - Severity: MEDIUM
+  - Effort: ~6 hours
 
-- [ ] Achieve 60%+ code coverage
-  - Current: 0%
-  - Focus on critical paths
-  - Effort: Ongoing
+- [ ] **ARCH-003**: Document component hierarchy and routing topology
+  - Severity: LOW
+  - Effort: ~3 hours
 
-### Security Hardening
-- [ ] **SEC-001**: Move API keys to backend proxy
-  - Create backend endpoints for sensitive API calls
-  - Remove `VITE_` prefixed secrets
-  - Effort: 8 hours (requires backend work)
+### 10. Performance & Bundle Size
 
-- [ ] **SEC-002**: Enforce WSS protocol in production
-  - File: `src/config/mcp-integration.ts`
-  - Add production check for secure WebSocket
-  - Effort: 1 hour
+- [ ] **PERF-001**: Generate bundle analysis and identify heavy modules
+  - Command: `npm run build` plus bundle analyzer plugin
+  - Severity: MEDIUM
+  - Effort: ~3 hours
 
----
+- [ ] **PERF-002**: Implement route-based code splitting and lazy loading for heavy pages
+  - Severity: MEDIUM
+  - Effort: ~6 hours
 
-## Long-term (Sprint 5+)
+- [ ] **PERF-003**: Extract rarely used chart/visual components into async-loaded chunks
+  - Severity: LOW
+  - Effort: ~4 hours
 
-### Documentation
-- [ ] Create OpenAPI/Swagger documentation for backend APIs
-  - Document all endpoints in `MCP_ENDPOINTS`
-  - Include request/response schemas
-  - Effort: 8 hours
+### 11. Documentation & DX
 
-- [ ] Set up Storybook for component library
-  - Document UI components
-  - Add visual regression tests
-  - Effort: 16 hours
+- [ ] **DOC-001**: Create a concise CONTRIBUTING.md with lint/test/audit expectations
+  - Severity: LOW
+  - Effort: ~3 hours
 
-- [ ] Create deployment runbook
-  - Document rollback procedures
-  - Environment setup guide
-  - Effort: 4 hours
-
-### Infrastructure
-- [ ] Upgrade Render.com to paid tier
-  - Eliminate cold start delays
-  - Add uptime monitoring
-  - Effort: 2 hours + cost
-
-- [ ] Implement health checks
-  - Backend health endpoint
-  - Frontend connectivity check
-  - Effort: 4 hours
-
-### Advanced Quality
-- [ ] **ARCH-002**: Implement client state management
-  - Evaluate: Zustand, Jotai, or Redux Toolkit
-  - Migrate complex client state
-  - Effort: 8 hours
-
-- [ ] Add accessibility testing
-  - Tools: axe-core, pa11y
-  - Integrate with CI
-  - Effort: 4 hours
-
-- [ ] Implement performance monitoring
-  - Tools: Web Vitals, Lighthouse CI
-  - Set performance budgets
-  - Effort: 4 hours
+- [ ] **DOC-002**: Document backend MCP integration contracts and timeouts
+  - Severity: LOW
+  - Effort: ~3 hours
 
 ---
 
-## Summary
+## Long-term (Ongoing / Nice-to-have)
+
+### 12. UX, Accessibility & Observability
+
+- [ ] **A11Y-001**: Add accessibility checks (axe, testing-library a11y assertions)
+  - Severity: LOW
+  - Effort: ~6 hours
+
+- [ ] **A11Y-002**: Establish color contrast and keyboard navigation standards for all key flows
+  - Severity: LOW
+  - Effort: ~6 hours
+
+- [ ] **OBS-001**: Implement front-end performance monitoring (Web Vitals, Sentry perf)
+  - Severity: LOW
+  - Effort: ~6 hours
+
+- [ ] **OBS-002**: Add privacy-aware analytics (page views, feature use)
+  - Severity: LOW
+  - Effort: ~6 hours
+
+### 13. Design System & Storybook
+
+- [ ] **DS-001**: Stand up Storybook for shadcn/radix-based components
+  - Severity: LOW
+  - Effort: ~8 hours
+
+- [ ] **DS-002**: Add visual regression testing for core components and layouts
+  - Severity: LOW
+  - Effort: ~8 hours
+
+### 14. Product & Experimentation
+
+- [ ] **EXP-001**: Add feature-flag framework for experiments (e.g., hero layouts, flows)
+  - Severity: LOW
+  - Effort: ~6 hours
+
+- [ ] **EXP-002**: Introduce basic A/B test hooks (flag-based rendering, metric logging)
+  - Severity: LOW
+  - Effort: ~6 hours
+
+---
+
+## Effort Summary (Approximate)
 
 | Priority | Task Count | Estimated Hours |
 |----------|------------|-----------------|
-| Immediate | 8 | ~4 hours |
-| Short-term | 11 | ~30 hours |
-| Medium-term | 10 | ~42 hours |
-| Long-term | 8 | ~50 hours |
-| **Total** | **37** | **~126 hours** |
+| Immediate | 8 tasks | ~4 hours |
+| Short-term | 11 tasks | ~30 hours |
+| Medium-term | 10 tasks | ~42 hours |
+| Long-term | 8 tasks | ~50 hours |
+| **Total** | **37 tasks** | **~126 hours** |
 
 ---
 
