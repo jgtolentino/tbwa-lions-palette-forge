@@ -1,0 +1,56 @@
+{
+  "domain": "marketing_os",
+  "version": "1.0.0",
+  "counts": {
+    "entities": 12,
+    "enums": 9,
+    "measures": 6,
+    "kpis": 6,
+    "pages": 3,
+    "tabs": 9,
+    "views": 3,
+    "rpcs": 3
+  },
+  "core_pages": [
+    "dashboard",
+    "video_analysis",
+    "ask_ces"
+  ],
+  "kpis": [
+    "total_campaigns",
+    "avg_ces",
+    "total_budget",
+    "avg_roi",
+    "top_performers",
+    "need_attention"
+  ],
+  "tenant_boundary": "workspace_id",
+  "schemas": ["ops", "marketing", "ces", "semantic"],
+  "ai_agents": {
+    "AdsBot": {
+      "role": "Campaign Operations Agent",
+      "capabilities": ["build_segments", "compile_journeys", "schedule_sends", "log_outcomes"]
+    },
+    "Marian": {
+      "role": "Creative & Copy Agent",
+      "capabilities": ["generate_variants", "optimize_subject_lines", "enforce_brand_voice"]
+    },
+    "Echo": {
+      "role": "Signal & Triggering Agent",
+      "capabilities": ["event_processing", "trigger_evaluation", "intent_extraction"]
+    },
+    "CESAI": {
+      "role": "Effectiveness & ROI Agent",
+      "capabilities": ["ces_scoring", "attribution_modeling", "uplift_estimation"]
+    },
+    "TestSprite": {
+      "role": "QA & Experiments Agent",
+      "capabilities": ["ab_testing", "template_validation", "deliverability_testing"]
+    }
+  },
+  "odoo_mapping": {
+    "core_modules": ["base", "mail", "contacts", "crm", "utm", "website", "website_form"],
+    "marketing_modules": ["mass_mailing", "marketing_automation"],
+    "oca_repos": ["mass-mailing", "social", "sale-promotion"]
+  }
+}
