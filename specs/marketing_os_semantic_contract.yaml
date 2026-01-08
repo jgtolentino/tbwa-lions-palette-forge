@@ -1,0 +1,3364 @@
+# ==============================================================================
+# Marketing OS Semantic Contract
+# Version: 1.0.0
+#
+# Maps: Odoo 18 CE Core + OCA Modules → AI Agent System
+# Target: Production + Marketplace Ready Marketing Intelligence Platform
+# ==============================================================================
+
+meta:
+  name: Marketing OS
+  version: "1.0.0"
+  description: |
+    Comprehensive marketing operations platform mapping Odoo 18 CE/OCA modules
+    to AI agent equivalents for campaign management, creative intelligence,
+    and effectiveness measurement.
+  odoo_version: "18.0"
+  oca_repos:
+    - mass-mailing
+    - social
+    - sale-promotion
+    - crm
+    - partner-contact
+    - website
+
+# ==============================================================================
+# SECTION 1: ENUMS
+# ==============================================================================
+enums:
+  # --- Campaign & Content Enums ---
+  campaign_status:
+    description: "Lifecycle state of a marketing campaign"
+    values:
+      - draft          # Initial creation, not yet reviewed
+      - pending_review # Submitted for approval
+      - approved       # Ready to execute
+      - scheduled      # Queued for future execution
+      - running        # Currently active
+      - paused         # Temporarily stopped
+      - completed      # Finished execution
+      - archived       # Historical record
+      - cancelled      # Terminated before completion
+    odoo_mapping: mail.mass_mailing.state
+
+  campaign_type:
+    description: "Primary campaign classification"
+    values:
+      - email_blast       # Single send mass email
+      - drip_sequence     # Multi-step automated journey
+      - social_post       # Social media content
+      - sms_campaign      # SMS messaging
+      - push_notification # Mobile/web push
+      - landing_page      # Dedicated conversion page
+      - promotion         # Coupon/discount campaign
+      - event             # Event-based marketing
+      - retargeting       # Re-engagement campaign
+    odoo_mapping: marketing.campaign.type
+
+  content_format:
+    description: "Creative asset format types"
+    values:
+      - html_email
+      - plain_text
+      - video_short      # < 60s
+      - video_long       # >= 60s
+      - image_static
+      - image_carousel
+      - gif_animated
+      - audio_clip
+      - interactive
+      - pdf_document
+    ai_agent: Marian
+
+  channel_type:
+    description: "Marketing distribution channels"
+    values:
+      - email
+      - sms
+      - facebook
+      - instagram
+      - twitter_x
+      - linkedin
+      - tiktok
+      - youtube
+      - google_ads
+      - meta_ads
+      - push_web
+      - push_mobile
+      - whatsapp
+    oca_module: social
+    ai_agent: AdsBot
+
+  audience_segment_type:
+    description: "Audience segmentation strategies"
+    values:
+      - demographic      # Age, gender, location
+      - behavioral       # Actions, engagement history
+      - psychographic    # Values, interests, lifestyle
+      - firmographic     # Company attributes (B2B)
+      - technographic    # Technology usage
+      - transactional    # Purchase history
+      - predictive       # ML-based scoring
+      - lookalike        # Similar to high-value segments
+    ai_agent: AdsBot
+
+  # --- Effectiveness & Attribution Enums ---
+  ces_tier:
+    description: "Creative Effectiveness Score tiers"
+    values:
+      - exceptional      # >= 80
+      - highly_effective # >= 70
+      - effective        # >= 60
+      - moderate         # >= 50
+      - needs_improvement # < 50
+    ai_agent: CESAI
+
+  attribution_model:
+    description: "Conversion attribution methodologies"
+    values:
+      - first_touch
+      - last_touch
+      - linear
+      - time_decay
+      - position_based   # U-shaped
+      - data_driven      # ML-based
+      - custom
+    ai_agent: CESAI
+
+  metric_type:
+    description: "Marketing effectiveness metrics"
+    values:
+      # Reach metrics
+      - impressions
+      - reach
+      - frequency
+      # Engagement metrics
+      - clicks
+      - ctr
+      - engagement_rate
+      - video_views
+      - video_completion_rate
+      # Conversion metrics
+      - conversions
+      - conversion_rate
+      - cost_per_conversion
+      - roas
+      - roi
+      # Brand metrics
+      - brand_lift
+      - ad_recall_lift
+      - consideration_lift
+      - purchase_intent_lift
+      # Revenue metrics
+      - revenue
+      - aov
+      - ltv
+      - sales_lift
+      - market_share_change
+    ai_agent: CESAI
+
+  event_trigger_type:
+    description: "Marketing automation trigger events"
+    values:
+      - form_submit
+      - page_view
+      - email_open
+      - email_click
+      - link_click
+      - video_start
+      - video_complete
+      - purchase
+      - cart_abandon
+      - signup
+      - download
+      - custom_event
+      - time_delay
+      - date_trigger
+      - segment_enter
+      - segment_exit
+      - score_threshold
+    odoo_mapping: marketing.automation.trigger
+    ai_agent: Echo
+
+  approval_status:
+    description: "Content approval workflow states"
+    values:
+      - not_submitted
+      - pending_creative
+      - pending_legal
+      - pending_brand
+      - pending_executive
+      - approved
+      - rejected
+      - revision_requested
+    ai_agent: TestSprite
+
+  experiment_status:
+    description: "A/B test experiment lifecycle"
+    values:
+      - designing
+      - ready
+      - running
+      - paused
+      - completed
+      - cancelled
+      - inconclusive
+    ai_agent: TestSprite
+
+  connector_status:
+    description: "External service connector health"
+    values:
+      - connected
+      - disconnected
+      - error
+      - rate_limited
+      - authenticating
+      - maintenance
+
+# ==============================================================================
+# SECTION 2: ENTITIES
+# ==============================================================================
+entities:
+  # ---------------------------------------------------------------------------
+  # CORE CAMPAIGN ENTITIES
+  # ---------------------------------------------------------------------------
+  campaign:
+    description: "Marketing campaign master entity"
+    odoo_mapping: mail.mass_mailing.campaign + marketing.campaign
+    ai_agents: [AdsBot, Marian, CESAI]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      # Identity
+      name:
+        type: string
+        max_length: 255
+        required: true
+        searchable: true
+
+      code:
+        type: string
+        max_length: 50
+        unique: true
+        description: "Internal campaign identifier"
+
+      # Classification
+      type:
+        type: enum
+        enum_ref: campaign_type
+        required: true
+
+      status:
+        type: enum
+        enum_ref: campaign_status
+        default: draft
+        indexed: true
+
+      # Ownership
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+        description: "Multi-tenant isolation key"
+
+      workspace_id:
+        type: uuid
+        required: true
+        description: "Workspace/project grouping"
+
+      brand_id:
+        type: uuid
+        required: true
+        foreign_key: brand.id
+
+      # Timing
+      scheduled_start:
+        type: timestamp
+        nullable: true
+
+      scheduled_end:
+        type: timestamp
+        nullable: true
+
+      actual_start:
+        type: timestamp
+        nullable: true
+
+      actual_end:
+        type: timestamp
+        nullable: true
+
+      # Budget
+      budget_planned:
+        type: decimal
+        precision: 12
+        scale: 2
+        nullable: true
+
+      budget_spent:
+        type: decimal
+        precision: 12
+        scale: 2
+        default: 0
+
+      currency:
+        type: string
+        max_length: 3
+        default: "PHP"
+
+      # Targeting
+      audience_segment_ids:
+        type: uuid[]
+        description: "Target audience segments"
+
+      channel_ids:
+        type: enum[]
+        enum_ref: channel_type
+
+      # UTM tracking
+      utm_source:
+        type: string
+        max_length: 100
+
+      utm_medium:
+        type: string
+        max_length: 100
+
+      utm_campaign:
+        type: string
+        max_length: 100
+
+      utm_content:
+        type: string
+        max_length: 100
+
+      utm_term:
+        type: string
+        max_length: 100
+
+      # Effectiveness
+      ces_score:
+        type: decimal
+        precision: 5
+        scale: 2
+        nullable: true
+        description: "Creative Effectiveness Score (0-100)"
+
+      ces_tier:
+        type: enum
+        enum_ref: ces_tier
+        computed: true
+
+      # Metadata
+      tags:
+        type: string[]
+        searchable: true
+
+      metadata:
+        type: jsonb
+        default: {}
+
+      # Audit
+      created_by:
+        type: uuid
+        required: true
+
+      created_at:
+        type: timestamp
+        default: now()
+
+      updated_at:
+        type: timestamp
+        auto_update: true
+
+      archived_at:
+        type: timestamp
+        nullable: true
+
+    indexes:
+      - columns: [tenant_id, status]
+        name: idx_campaign_tenant_status
+      - columns: [brand_id, scheduled_start]
+        name: idx_campaign_brand_schedule
+      - columns: [ces_score]
+        name: idx_campaign_ces
+        where: "ces_score IS NOT NULL"
+
+  # ---------------------------------------------------------------------------
+  creative:
+    description: "Creative asset/content entity"
+    odoo_mapping: mail.mass_mailing + ir.attachment
+    ai_agents: [Marian, TestSprite]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      campaign_id:
+        type: uuid
+        required: true
+        foreign_key: campaign.id
+        on_delete: cascade
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      # Content
+      name:
+        type: string
+        max_length: 255
+        required: true
+
+      format:
+        type: enum
+        enum_ref: content_format
+        required: true
+
+      subject_line:
+        type: string
+        max_length: 500
+        nullable: true
+        description: "Email subject or ad headline"
+
+      preview_text:
+        type: string
+        max_length: 500
+        nullable: true
+
+      body_html:
+        type: text
+        nullable: true
+
+      body_plain:
+        type: text
+        nullable: true
+
+      cta_text:
+        type: string
+        max_length: 100
+        nullable: true
+
+      cta_url:
+        type: string
+        max_length: 2048
+        nullable: true
+
+      # Assets
+      primary_asset_url:
+        type: string
+        max_length: 2048
+        nullable: true
+
+      asset_urls:
+        type: string[]
+        default: []
+
+      thumbnail_url:
+        type: string
+        max_length: 2048
+        nullable: true
+
+      # Variants (A/B testing)
+      variant_group_id:
+        type: uuid
+        nullable: true
+        description: "Groups variants for A/B tests"
+
+      variant_label:
+        type: string
+        max_length: 50
+        nullable: true
+        description: "e.g., 'Control', 'Variant A', 'Variant B'"
+
+      variant_weight:
+        type: decimal
+        precision: 5
+        scale: 2
+        default: 100
+        description: "Traffic allocation percentage"
+
+      # Approval
+      approval_status:
+        type: enum
+        enum_ref: approval_status
+        default: not_submitted
+
+      approved_by:
+        type: uuid
+        nullable: true
+
+      approved_at:
+        type: timestamp
+        nullable: true
+
+      # AI Analysis
+      ai_quality_score:
+        type: decimal
+        precision: 5
+        scale: 2
+        nullable: true
+        description: "Marian-generated quality assessment"
+
+      ai_suggestions:
+        type: jsonb
+        default: []
+        description: "AI-generated improvement suggestions"
+
+      brand_voice_score:
+        type: decimal
+        precision: 5
+        scale: 2
+        nullable: true
+
+      # Metadata
+      metadata:
+        type: jsonb
+        default: {}
+
+      created_by:
+        type: uuid
+        required: true
+
+      created_at:
+        type: timestamp
+        default: now()
+
+      updated_at:
+        type: timestamp
+        auto_update: true
+
+  # ---------------------------------------------------------------------------
+  audience_segment:
+    description: "Marketing audience segment definition"
+    odoo_mapping: mailing.list + res.partner.category
+    ai_agents: [AdsBot, Echo]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      name:
+        type: string
+        max_length: 255
+        required: true
+
+      description:
+        type: text
+        nullable: true
+
+      segment_type:
+        type: enum
+        enum_ref: audience_segment_type
+        required: true
+
+      # Dynamic vs Static
+      is_dynamic:
+        type: boolean
+        default: true
+        description: "Auto-updates based on rules"
+
+      # Criteria (for dynamic segments)
+      criteria:
+        type: jsonb
+        default: {}
+        description: "Segment qualification rules"
+        example:
+          operator: AND
+          conditions:
+            - field: country
+              op: in
+              value: ["PH", "SG", "MY"]
+            - field: last_purchase_days
+              op: "<="
+              value: 90
+            - field: ltv
+              op: ">="
+              value: 5000
+
+      # Member count
+      member_count:
+        type: integer
+        default: 0
+        description: "Current segment size"
+
+      member_count_updated_at:
+        type: timestamp
+        nullable: true
+
+      # Opt-in management
+      double_optin_required:
+        type: boolean
+        default: true
+
+      # Suppression
+      is_suppression_list:
+        type: boolean
+        default: false
+        description: "Exclusion list flag"
+
+      # Metadata
+      tags:
+        type: string[]
+        default: []
+
+      metadata:
+        type: jsonb
+        default: {}
+
+      created_by:
+        type: uuid
+        required: true
+
+      created_at:
+        type: timestamp
+        default: now()
+
+      updated_at:
+        type: timestamp
+        auto_update: true
+
+  # ---------------------------------------------------------------------------
+  journey:
+    description: "Marketing automation journey/drip sequence"
+    odoo_mapping: marketing.campaign + marketing.activity
+    ai_agents: [AdsBot, Echo]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      campaign_id:
+        type: uuid
+        nullable: true
+        foreign_key: campaign.id
+
+      name:
+        type: string
+        max_length: 255
+        required: true
+
+      description:
+        type: text
+        nullable: true
+
+      status:
+        type: enum
+        enum_ref: campaign_status
+        default: draft
+
+      # Entry criteria
+      entry_trigger:
+        type: enum
+        enum_ref: event_trigger_type
+        required: true
+
+      entry_segment_id:
+        type: uuid
+        nullable: true
+        foreign_key: audience_segment.id
+
+      entry_criteria:
+        type: jsonb
+        default: {}
+
+      # Exit criteria
+      exit_criteria:
+        type: jsonb
+        default: {}
+        description: "Conditions to remove contacts from journey"
+
+      # Timing
+      scheduled_start:
+        type: timestamp
+        nullable: true
+
+      scheduled_end:
+        type: timestamp
+        nullable: true
+
+      # Limits
+      max_entries_per_contact:
+        type: integer
+        default: 1
+        description: "How many times a contact can enter"
+
+      re_entry_wait_days:
+        type: integer
+        default: 30
+
+      # Stats
+      total_entered:
+        type: integer
+        default: 0
+
+      total_completed:
+        type: integer
+        default: 0
+
+      total_exited:
+        type: integer
+        default: 0
+
+      total_active:
+        type: integer
+        default: 0
+        computed: true
+
+      # Metadata
+      metadata:
+        type: jsonb
+        default: {}
+
+      created_by:
+        type: uuid
+        required: true
+
+      created_at:
+        type: timestamp
+        default: now()
+
+      updated_at:
+        type: timestamp
+        auto_update: true
+
+  # ---------------------------------------------------------------------------
+  journey_step:
+    description: "Individual step within a journey"
+    odoo_mapping: marketing.activity
+    ai_agents: [AdsBot, Echo]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      journey_id:
+        type: uuid
+        required: true
+        foreign_key: journey.id
+        on_delete: cascade
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      # Position
+      step_order:
+        type: integer
+        required: true
+
+      name:
+        type: string
+        max_length: 255
+        required: true
+
+      # Step type
+      step_type:
+        type: string
+        required: true
+        enum_values:
+          - send_email
+          - send_sms
+          - send_push
+          - wait_time
+          - wait_event
+          - condition_split
+          - random_split
+          - update_contact
+          - add_to_segment
+          - remove_from_segment
+          - webhook
+          - end_journey
+
+      # Configuration
+      config:
+        type: jsonb
+        required: true
+        description: "Step-specific configuration"
+        examples:
+          send_email:
+            creative_id: "uuid"
+            from_name: "Brand Name"
+            from_email: "noreply@brand.com"
+            reply_to: "support@brand.com"
+          wait_time:
+            duration_value: 2
+            duration_unit: "days"
+          wait_event:
+            event_type: "email_click"
+            timeout_hours: 72
+          condition_split:
+            branches:
+              - name: "High Value"
+                criteria: {"ltv": {">": 10000}}
+              - name: "Others"
+                default: true
+
+      # Branching
+      parent_step_id:
+        type: uuid
+        nullable: true
+        foreign_key: journey_step.id
+
+      branch_label:
+        type: string
+        max_length: 100
+        nullable: true
+
+      # Stats
+      total_reached:
+        type: integer
+        default: 0
+
+      total_completed:
+        type: integer
+        default: 0
+
+      # Metadata
+      metadata:
+        type: jsonb
+        default: {}
+
+      created_at:
+        type: timestamp
+        default: now()
+
+      updated_at:
+        type: timestamp
+        auto_update: true
+
+  # ---------------------------------------------------------------------------
+  # EVENT & TRACKING ENTITIES
+  # ---------------------------------------------------------------------------
+  marketing_event:
+    description: "Unified marketing event log"
+    odoo_mapping: mail.mail.statistics + website.track
+    ai_agents: [Echo, CESAI]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+        indexed: true
+
+      # Event identification
+      event_type:
+        type: string
+        required: true
+        indexed: true
+        enum_values:
+          # Email events
+          - email_sent
+          - email_delivered
+          - email_bounced
+          - email_opened
+          - email_clicked
+          - email_unsubscribed
+          - email_complained
+          # SMS events
+          - sms_sent
+          - sms_delivered
+          - sms_failed
+          - sms_clicked
+          # Web events
+          - page_view
+          - form_submit
+          - link_click
+          - video_start
+          - video_complete
+          # Conversion events
+          - lead_created
+          - opportunity_created
+          - purchase_completed
+          - cart_abandoned
+          # Journey events
+          - journey_entered
+          - journey_step_completed
+          - journey_exited
+          # Engagement events
+          - social_like
+          - social_share
+          - social_comment
+
+      event_timestamp:
+        type: timestamp
+        required: true
+        indexed: true
+
+      # Source attribution
+      campaign_id:
+        type: uuid
+        nullable: true
+        foreign_key: campaign.id
+        indexed: true
+
+      creative_id:
+        type: uuid
+        nullable: true
+        foreign_key: creative.id
+
+      journey_id:
+        type: uuid
+        nullable: true
+        foreign_key: journey.id
+
+      journey_step_id:
+        type: uuid
+        nullable: true
+        foreign_key: journey_step.id
+
+      # Contact
+      contact_id:
+        type: uuid
+        nullable: true
+        indexed: true
+        description: "Internal contact reference"
+
+      contact_email:
+        type: string
+        max_length: 255
+        nullable: true
+        indexed: true
+
+      # UTM
+      utm_source:
+        type: string
+        max_length: 100
+        nullable: true
+
+      utm_medium:
+        type: string
+        max_length: 100
+        nullable: true
+
+      utm_campaign:
+        type: string
+        max_length: 100
+        nullable: true
+
+      utm_content:
+        type: string
+        max_length: 100
+        nullable: true
+
+      # Event details
+      event_data:
+        type: jsonb
+        default: {}
+        description: "Event-specific payload"
+        examples:
+          email_clicked:
+            link_url: "https://example.com/offer"
+            link_position: 2
+          page_view:
+            page_url: "/products/widget"
+            referrer: "https://google.com"
+            session_id: "abc123"
+
+      # Device/client info
+      ip_address:
+        type: string
+        max_length: 45
+        nullable: true
+
+      user_agent:
+        type: string
+        max_length: 500
+        nullable: true
+
+      device_type:
+        type: string
+        max_length: 50
+        nullable: true
+
+      # Processing
+      processed_at:
+        type: timestamp
+        nullable: true
+
+      created_at:
+        type: timestamp
+        default: now()
+
+    indexes:
+      - columns: [tenant_id, event_timestamp]
+        name: idx_event_tenant_time
+      - columns: [campaign_id, event_type]
+        name: idx_event_campaign_type
+      - columns: [contact_id, event_timestamp]
+        name: idx_event_contact_time
+
+    partitioning:
+      type: range
+      column: event_timestamp
+      interval: monthly
+
+  # ---------------------------------------------------------------------------
+  send_log:
+    description: "Idempotent send tracking (prevents double-sends)"
+    odoo_mapping: mail.mail.statistics
+    ai_agents: [AdsBot, TestSprite]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      # Unique constraint for idempotency
+      idempotency_key:
+        type: string
+        max_length: 255
+        required: true
+        unique: true
+        description: "campaign_id:contact_id:creative_id:date"
+
+      campaign_id:
+        type: uuid
+        required: true
+        foreign_key: campaign.id
+
+      creative_id:
+        type: uuid
+        required: true
+        foreign_key: creative.id
+
+      contact_id:
+        type: uuid
+        required: true
+
+      contact_email:
+        type: string
+        max_length: 255
+        required: true
+
+      channel:
+        type: enum
+        enum_ref: channel_type
+        required: true
+
+      # Status
+      status:
+        type: string
+        required: true
+        enum_values:
+          - queued
+          - sending
+          - sent
+          - delivered
+          - bounced
+          - failed
+          - cancelled
+
+      # Timing
+      queued_at:
+        type: timestamp
+        default: now()
+
+      sent_at:
+        type: timestamp
+        nullable: true
+
+      delivered_at:
+        type: timestamp
+        nullable: true
+
+      # Error handling
+      error_code:
+        type: string
+        max_length: 100
+        nullable: true
+
+      error_message:
+        type: text
+        nullable: true
+
+      retry_count:
+        type: integer
+        default: 0
+
+      next_retry_at:
+        type: timestamp
+        nullable: true
+
+      # Provider
+      provider:
+        type: string
+        max_length: 50
+        nullable: true
+
+      provider_message_id:
+        type: string
+        max_length: 255
+        nullable: true
+
+      # Metadata
+      metadata:
+        type: jsonb
+        default: {}
+
+      created_at:
+        type: timestamp
+        default: now()
+
+      updated_at:
+        type: timestamp
+        auto_update: true
+
+  # ---------------------------------------------------------------------------
+  # PROMOTION ENTITIES
+  # ---------------------------------------------------------------------------
+  promotion:
+    description: "Marketing promotion/coupon definition"
+    odoo_mapping: sale.coupon.program + loyalty.program
+    ai_agents: [AdsBot, CESAI]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      campaign_id:
+        type: uuid
+        nullable: true
+        foreign_key: campaign.id
+
+      name:
+        type: string
+        max_length: 255
+        required: true
+
+      code:
+        type: string
+        max_length: 50
+        unique: true
+        description: "Promo code (e.g., SUMMER2024)"
+
+      promotion_type:
+        type: string
+        required: true
+        enum_values:
+          - percentage_discount
+          - fixed_discount
+          - free_shipping
+          - bogo
+          - bundle
+          - loyalty_points
+          - cashback
+
+      # Value
+      discount_value:
+        type: decimal
+        precision: 10
+        scale: 2
+        nullable: true
+
+      discount_percentage:
+        type: decimal
+        precision: 5
+        scale: 2
+        nullable: true
+
+      max_discount_amount:
+        type: decimal
+        precision: 10
+        scale: 2
+        nullable: true
+
+      currency:
+        type: string
+        max_length: 3
+        default: "PHP"
+
+      # Conditions
+      min_purchase_amount:
+        type: decimal
+        precision: 10
+        scale: 2
+        nullable: true
+
+      applicable_products:
+        type: uuid[]
+        default: []
+        description: "Empty = all products"
+
+      applicable_categories:
+        type: string[]
+        default: []
+
+      excluded_products:
+        type: uuid[]
+        default: []
+
+      # Limits
+      total_usage_limit:
+        type: integer
+        nullable: true
+
+      per_customer_limit:
+        type: integer
+        default: 1
+
+      current_usage_count:
+        type: integer
+        default: 0
+
+      # Validity
+      valid_from:
+        type: timestamp
+        required: true
+
+      valid_until:
+        type: timestamp
+        required: true
+
+      is_active:
+        type: boolean
+        default: true
+
+      # Targeting
+      eligible_segment_ids:
+        type: uuid[]
+        default: []
+        description: "Empty = all customers"
+
+      is_first_purchase_only:
+        type: boolean
+        default: false
+
+      # Stacking
+      is_stackable:
+        type: boolean
+        default: false
+
+      priority:
+        type: integer
+        default: 0
+        description: "Higher = applied first"
+
+      # Tracking
+      total_discount_given:
+        type: decimal
+        precision: 12
+        scale: 2
+        default: 0
+
+      total_orders_with_promo:
+        type: integer
+        default: 0
+
+      # Metadata
+      metadata:
+        type: jsonb
+        default: {}
+
+      created_by:
+        type: uuid
+        required: true
+
+      created_at:
+        type: timestamp
+        default: now()
+
+      updated_at:
+        type: timestamp
+        auto_update: true
+
+  # ---------------------------------------------------------------------------
+  # EFFECTIVENESS ENTITIES
+  # ---------------------------------------------------------------------------
+  campaign_metrics:
+    description: "Aggregated campaign performance metrics"
+    odoo_mapping: mail.mass_mailing.report + utm.mixin
+    ai_agents: [CESAI, TestSprite]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      campaign_id:
+        type: uuid
+        required: true
+        foreign_key: campaign.id
+        indexed: true
+
+      # Time dimension
+      date:
+        type: date
+        required: true
+        indexed: true
+
+      channel:
+        type: enum
+        enum_ref: channel_type
+        required: true
+
+      # Reach
+      sends:
+        type: integer
+        default: 0
+
+      delivered:
+        type: integer
+        default: 0
+
+      bounced:
+        type: integer
+        default: 0
+
+      impressions:
+        type: bigint
+        default: 0
+
+      reach:
+        type: bigint
+        default: 0
+
+      # Engagement
+      opens:
+        type: integer
+        default: 0
+
+      unique_opens:
+        type: integer
+        default: 0
+
+      clicks:
+        type: integer
+        default: 0
+
+      unique_clicks:
+        type: integer
+        default: 0
+
+      unsubscribes:
+        type: integer
+        default: 0
+
+      complaints:
+        type: integer
+        default: 0
+
+      # Video (if applicable)
+      video_views:
+        type: integer
+        default: 0
+
+      video_completions:
+        type: integer
+        default: 0
+
+      # Social (if applicable)
+      likes:
+        type: integer
+        default: 0
+
+      shares:
+        type: integer
+        default: 0
+
+      comments:
+        type: integer
+        default: 0
+
+      # Conversions
+      conversions:
+        type: integer
+        default: 0
+
+      conversion_value:
+        type: decimal
+        precision: 12
+        scale: 2
+        default: 0
+
+      # Costs
+      cost_actual:
+        type: decimal
+        precision: 12
+        scale: 2
+        default: 0
+
+      # Computed rates (stored for query performance)
+      delivery_rate:
+        type: decimal
+        precision: 5
+        scale: 4
+        computed: true
+
+      open_rate:
+        type: decimal
+        precision: 5
+        scale: 4
+        computed: true
+
+      click_rate:
+        type: decimal
+        precision: 5
+        scale: 4
+        computed: true
+
+      conversion_rate:
+        type: decimal
+        precision: 5
+        scale: 4
+        computed: true
+
+      ctr:
+        type: decimal
+        precision: 5
+        scale: 4
+        computed: true
+
+      roi:
+        type: decimal
+        precision: 8
+        scale: 4
+        computed: true
+
+      # Timestamp
+      updated_at:
+        type: timestamp
+        auto_update: true
+
+    indexes:
+      - columns: [tenant_id, campaign_id, date]
+        name: idx_metrics_campaign_date
+        unique: true
+      - columns: [tenant_id, date, channel]
+        name: idx_metrics_date_channel
+
+  # ---------------------------------------------------------------------------
+  ces_analysis:
+    description: "Creative Effectiveness Score analysis result"
+    ai_agents: [CESAI, Marian]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      campaign_id:
+        type: uuid
+        nullable: true
+        foreign_key: campaign.id
+
+      creative_id:
+        type: uuid
+        nullable: true
+        foreign_key: creative.id
+
+      # Analysis type
+      analysis_type:
+        type: string
+        required: true
+        enum_values:
+          - pre_launch      # Predictive
+          - in_flight       # Real-time
+          - post_campaign   # Historical
+          - benchmark       # Comparison
+
+      # Core scores (0-100)
+      ces_score:
+        type: decimal
+        precision: 5
+        scale: 2
+        required: true
+
+      ces_tier:
+        type: enum
+        enum_ref: ces_tier
+        computed: true
+
+      confidence:
+        type: decimal
+        precision: 5
+        scale: 4
+        default: 0.8
+
+      # 8-Dimensional effectiveness framework
+      dimension_scores:
+        type: jsonb
+        required: true
+        description: "Scores for each effectiveness dimension"
+        schema:
+          disruption:
+            type: decimal
+            description: "Innovation/Risk-taking score"
+          performance_predictors:
+            type: decimal
+            description: "Award recognition likelihood"
+          storytelling:
+            type: decimal
+            description: "Narrative impact"
+          cultural_relevance:
+            type: decimal
+            description: "Local/Global context fit"
+          csr_authenticity:
+            type: decimal
+            description: "Purpose/CSR authenticity"
+          technology_integration:
+            type: decimal
+            description: "Tech utilization"
+          platform_integration:
+            type: decimal
+            description: "Cross-platform consistency"
+          ai_personalization:
+            type: decimal
+            description: "AI/Personalization usage"
+
+      # Component scores
+      message_clarity_score:
+        type: decimal
+        precision: 5
+        scale: 2
+
+      call_to_action_score:
+        type: decimal
+        precision: 5
+        scale: 2
+
+      emotional_impact_score:
+        type: decimal
+        precision: 5
+        scale: 2
+
+      visual_distinctiveness_score:
+        type: decimal
+        precision: 5
+        scale: 2
+
+      brand_consistency_score:
+        type: decimal
+        precision: 5
+        scale: 2
+
+      # Benchmarks
+      category_benchmark:
+        type: decimal
+        precision: 5
+        scale: 2
+        nullable: true
+
+      category_percentile:
+        type: integer
+        nullable: true
+
+      brand_benchmark:
+        type: decimal
+        precision: 5
+        scale: 2
+        nullable: true
+
+      # Predictions
+      award_likelihood:
+        type: decimal
+        precision: 5
+        scale: 4
+        nullable: true
+
+      predicted_roi:
+        type: decimal
+        precision: 8
+        scale: 2
+        nullable: true
+
+      predicted_engagement_rate:
+        type: decimal
+        precision: 5
+        scale: 4
+        nullable: true
+
+      # Insights
+      insights:
+        type: jsonb
+        default: []
+        description: "AI-generated insights array"
+
+      recommendations:
+        type: jsonb
+        default: []
+        description: "Actionable recommendations"
+
+      semantic_tags:
+        type: string[]
+        default: []
+
+      # Source
+      data_sources:
+        type: string[]
+        default: []
+        description: "e.g., ['ph_awards', 'warc', 'validated']"
+
+      # Metadata
+      analyzed_by:
+        type: string
+        max_length: 100
+        description: "AI model/agent version"
+
+      analyzed_at:
+        type: timestamp
+        default: now()
+
+      metadata:
+        type: jsonb
+        default: {}
+
+  # ---------------------------------------------------------------------------
+  experiment:
+    description: "A/B test experiment definition"
+    ai_agents: [TestSprite, CESAI]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      campaign_id:
+        type: uuid
+        required: true
+        foreign_key: campaign.id
+
+      name:
+        type: string
+        max_length: 255
+        required: true
+
+      description:
+        type: text
+        nullable: true
+
+      hypothesis:
+        type: text
+        nullable: true
+
+      status:
+        type: enum
+        enum_ref: experiment_status
+        default: designing
+
+      # Configuration
+      test_type:
+        type: string
+        required: true
+        enum_values:
+          - ab_test        # Two variants
+          - multivariate   # Multiple elements
+          - split_url      # Different landing pages
+          - holdout        # Control vs treatment
+
+      primary_metric:
+        type: enum
+        enum_ref: metric_type
+        required: true
+
+      secondary_metrics:
+        type: enum[]
+        enum_ref: metric_type
+        default: []
+
+      # Statistical settings
+      confidence_level:
+        type: decimal
+        precision: 5
+        scale: 4
+        default: 0.95
+
+      minimum_detectable_effect:
+        type: decimal
+        precision: 5
+        scale: 4
+        default: 0.05
+
+      sample_size_required:
+        type: integer
+        nullable: true
+
+      # Traffic allocation
+      traffic_percentage:
+        type: decimal
+        precision: 5
+        scale: 2
+        default: 100
+        description: "% of eligible traffic in experiment"
+
+      # Variants (stored in experiment_variant entity)
+
+      # Results
+      winning_variant_id:
+        type: uuid
+        nullable: true
+
+      statistical_significance:
+        type: decimal
+        precision: 5
+        scale: 4
+        nullable: true
+
+      lift:
+        type: decimal
+        precision: 8
+        scale: 4
+        nullable: true
+
+      # Timing
+      started_at:
+        type: timestamp
+        nullable: true
+
+      ended_at:
+        type: timestamp
+        nullable: true
+
+      # Metadata
+      metadata:
+        type: jsonb
+        default: {}
+
+      created_by:
+        type: uuid
+        required: true
+
+      created_at:
+        type: timestamp
+        default: now()
+
+      updated_at:
+        type: timestamp
+        auto_update: true
+
+  # ---------------------------------------------------------------------------
+  experiment_variant:
+    description: "A/B test variant configuration and results"
+    ai_agents: [TestSprite]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      experiment_id:
+        type: uuid
+        required: true
+        foreign_key: experiment.id
+        on_delete: cascade
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      name:
+        type: string
+        max_length: 100
+        required: true
+        description: "e.g., 'Control', 'Variant A'"
+
+      is_control:
+        type: boolean
+        default: false
+
+      # Configuration
+      creative_id:
+        type: uuid
+        nullable: true
+        foreign_key: creative.id
+
+      config:
+        type: jsonb
+        default: {}
+        description: "Variant-specific configuration"
+
+      # Traffic
+      traffic_weight:
+        type: decimal
+        precision: 5
+        scale: 2
+        default: 50
+
+      # Results
+      sample_size:
+        type: integer
+        default: 0
+
+      conversions:
+        type: integer
+        default: 0
+
+      conversion_rate:
+        type: decimal
+        precision: 8
+        scale: 6
+        computed: true
+
+      primary_metric_value:
+        type: decimal
+        precision: 12
+        scale: 4
+        nullable: true
+
+      secondary_metrics:
+        type: jsonb
+        default: {}
+
+      # Metadata
+      created_at:
+        type: timestamp
+        default: now()
+
+      updated_at:
+        type: timestamp
+        auto_update: true
+
+  # ---------------------------------------------------------------------------
+  # CONNECTOR ENTITIES
+  # ---------------------------------------------------------------------------
+  connector:
+    description: "External service connector configuration"
+    ai_agents: [AdsBot]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      name:
+        type: string
+        max_length: 255
+        required: true
+
+      connector_type:
+        type: string
+        required: true
+        enum_values:
+          - smtp
+          - sms_gateway
+          - facebook
+          - instagram
+          - twitter_x
+          - linkedin
+          - google_ads
+          - meta_ads
+          - webhook
+          - crm
+          - analytics
+
+      status:
+        type: enum
+        enum_ref: connector_status
+        default: disconnected
+
+      # Credentials (encrypted)
+      credentials:
+        type: jsonb
+        encrypted: true
+        description: "Encrypted credential storage"
+
+      # Configuration
+      config:
+        type: jsonb
+        default: {}
+        description: "Connector-specific settings"
+        examples:
+          smtp:
+            host: "smtp.sendgrid.net"
+            port: 587
+            encryption: "tls"
+            from_email: "noreply@brand.com"
+            from_name: "Brand Name"
+            daily_limit: 10000
+          sms_gateway:
+            provider: "twilio"
+            sender_id: "BRAND"
+            quiet_hours_start: "22:00"
+            quiet_hours_end: "08:00"
+            quiet_hours_timezone: "Asia/Manila"
+
+      # Rate limiting
+      rate_limit_per_second:
+        type: integer
+        nullable: true
+
+      rate_limit_per_day:
+        type: integer
+        nullable: true
+
+      current_daily_usage:
+        type: integer
+        default: 0
+
+      usage_reset_at:
+        type: timestamp
+        nullable: true
+
+      # Health
+      last_health_check:
+        type: timestamp
+        nullable: true
+
+      health_check_url:
+        type: string
+        max_length: 2048
+        nullable: true
+
+      last_error:
+        type: text
+        nullable: true
+
+      error_count:
+        type: integer
+        default: 0
+
+      # Backoff
+      backoff_until:
+        type: timestamp
+        nullable: true
+
+      # Metadata
+      metadata:
+        type: jsonb
+        default: {}
+
+      created_by:
+        type: uuid
+        required: true
+
+      created_at:
+        type: timestamp
+        default: now()
+
+      updated_at:
+        type: timestamp
+        auto_update: true
+
+  # ---------------------------------------------------------------------------
+  # SUPPORTING ENTITIES
+  # ---------------------------------------------------------------------------
+  brand:
+    description: "Brand/advertiser definition"
+    odoo_mapping: res.partner (customer)
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      name:
+        type: string
+        max_length: 255
+        required: true
+
+      code:
+        type: string
+        max_length: 50
+        unique: true
+
+      industry:
+        type: string
+        max_length: 100
+        nullable: true
+
+      logo_url:
+        type: string
+        max_length: 2048
+        nullable: true
+
+      primary_color:
+        type: string
+        max_length: 7
+        nullable: true
+        description: "Hex color code"
+
+      secondary_color:
+        type: string
+        max_length: 7
+        nullable: true
+
+      brand_guidelines_url:
+        type: string
+        max_length: 2048
+        nullable: true
+
+      voice_attributes:
+        type: jsonb
+        default: {}
+        description: "Brand voice characteristics for Marian"
+
+      is_active:
+        type: boolean
+        default: true
+
+      metadata:
+        type: jsonb
+        default: {}
+
+      created_at:
+        type: timestamp
+        default: now()
+
+      updated_at:
+        type: timestamp
+        auto_update: true
+
+  # ---------------------------------------------------------------------------
+  approval_workflow:
+    description: "Campaign/creative approval audit trail"
+    ai_agents: [TestSprite]
+    fields:
+      id:
+        type: uuid
+        primary_key: true
+
+      tenant_id:
+        type: uuid
+        required: true
+        rls_key: true
+
+      # Target
+      entity_type:
+        type: string
+        required: true
+        enum_values:
+          - campaign
+          - creative
+          - journey
+          - promotion
+
+      entity_id:
+        type: uuid
+        required: true
+
+      # Workflow
+      from_status:
+        type: enum
+        enum_ref: approval_status
+        required: true
+
+      to_status:
+        type: enum
+        enum_ref: approval_status
+        required: true
+
+      # Actor
+      performed_by:
+        type: uuid
+        required: true
+
+      performed_at:
+        type: timestamp
+        default: now()
+
+      # Comments
+      comment:
+        type: text
+        nullable: true
+
+      # Metadata
+      metadata:
+        type: jsonb
+        default: {}
+
+# ==============================================================================
+# SECTION 3: VIEWS
+# ==============================================================================
+views:
+  # ---------------------------------------------------------------------------
+  # DASHBOARD VIEWS
+  # ---------------------------------------------------------------------------
+  v_campaign_dashboard:
+    description: "Campaign overview dashboard"
+    base_entity: campaign
+    joins:
+      - entity: brand
+        on: campaign.brand_id = brand.id
+      - entity: campaign_metrics
+        on: campaign.id = campaign_metrics.campaign_id
+        type: left
+    columns:
+      - campaign.*
+      - brand.name AS brand_name
+      - brand.industry
+      - SUM(campaign_metrics.sends) AS total_sends
+      - SUM(campaign_metrics.opens) AS total_opens
+      - SUM(campaign_metrics.clicks) AS total_clicks
+      - SUM(campaign_metrics.conversions) AS total_conversions
+      - SUM(campaign_metrics.conversion_value) AS total_revenue
+      - SUM(campaign_metrics.cost_actual) AS total_cost
+      - CASE WHEN SUM(cost_actual) > 0
+          THEN (SUM(conversion_value) - SUM(cost_actual)) / SUM(cost_actual)
+          ELSE NULL END AS roi_calculated
+    group_by:
+      - campaign.id
+      - brand.id
+    filters:
+      tenant_id: required
+      status: optional
+      date_range: optional
+
+  v_ces_leaderboard:
+    description: "CES score leaderboard view"
+    base_entity: campaign
+    joins:
+      - entity: brand
+        on: campaign.brand_id = brand.id
+      - entity: ces_analysis
+        on: campaign.id = ces_analysis.campaign_id
+        type: left
+    columns:
+      - campaign.id
+      - campaign.name
+      - campaign.type
+      - campaign.status
+      - brand.name AS brand_name
+      - brand.industry
+      - campaign.ces_score
+      - campaign.ces_tier
+      - ces_analysis.dimension_scores
+      - ces_analysis.award_likelihood
+      - ces_analysis.insights
+      - RANK() OVER (PARTITION BY brand.industry ORDER BY campaign.ces_score DESC) AS industry_rank
+    order_by:
+      - campaign.ces_score DESC NULLS LAST
+
+  v_journey_analytics:
+    description: "Journey performance analytics"
+    base_entity: journey
+    joins:
+      - entity: journey_step
+        on: journey.id = journey_step.journey_id
+        type: left
+    columns:
+      - journey.*
+      - COUNT(journey_step.id) AS step_count
+      - SUM(journey_step.total_reached) AS total_step_reaches
+      - SUM(journey_step.total_completed) AS total_step_completions
+      - CASE WHEN journey.total_entered > 0
+          THEN journey.total_completed::DECIMAL / journey.total_entered
+          ELSE NULL END AS completion_rate
+    group_by:
+      - journey.id
+
+  v_experiment_results:
+    description: "A/B test experiment results"
+    base_entity: experiment
+    joins:
+      - entity: experiment_variant
+        on: experiment.id = experiment_variant.experiment_id
+    columns:
+      - experiment.*
+      - experiment_variant.id AS variant_id
+      - experiment_variant.name AS variant_name
+      - experiment_variant.is_control
+      - experiment_variant.sample_size
+      - experiment_variant.conversions
+      - experiment_variant.conversion_rate
+      - experiment_variant.primary_metric_value
+    order_by:
+      - experiment.id
+      - experiment_variant.is_control DESC
+
+  v_connector_health:
+    description: "Connector health monitoring"
+    base_entity: connector
+    columns:
+      - connector.*
+      - CASE
+          WHEN status = 'connected' AND error_count = 0 THEN 'healthy'
+          WHEN status = 'connected' AND error_count > 0 THEN 'degraded'
+          WHEN status = 'rate_limited' THEN 'throttled'
+          ELSE 'unhealthy'
+        END AS health_status
+      - EXTRACT(EPOCH FROM (NOW() - last_health_check)) AS seconds_since_check
+
+# ==============================================================================
+# SECTION 4: RLS POLICIES
+# ==============================================================================
+rls:
+  # ---------------------------------------------------------------------------
+  # Core tenant isolation
+  # ---------------------------------------------------------------------------
+  tenant_isolation:
+    description: "All entities filtered by tenant_id"
+    applies_to: all_entities_with_tenant_id
+    policy: |
+      tenant_id = current_setting('app.current_tenant_id')::uuid
+    enforcement: always
+
+  # ---------------------------------------------------------------------------
+  # Role-based policies
+  # ---------------------------------------------------------------------------
+  campaign_access:
+    entity: campaign
+    policies:
+      - name: tenant_members_read
+        operation: SELECT
+        roles: [viewer, analyst, member, admin, owner]
+        policy: tenant_id = current_tenant()
+
+      - name: members_create
+        operation: INSERT
+        roles: [member, admin, owner]
+        policy: tenant_id = current_tenant()
+
+      - name: members_update
+        operation: UPDATE
+        roles: [member, admin, owner]
+        policy: |
+          tenant_id = current_tenant()
+          AND (
+            current_role() IN ('admin', 'owner')
+            OR created_by = current_user_id()
+          )
+
+      - name: admins_delete
+        operation: DELETE
+        roles: [admin, owner]
+        policy: tenant_id = current_tenant()
+
+  creative_access:
+    entity: creative
+    policies:
+      - name: tenant_read
+        operation: SELECT
+        policy: tenant_id = current_tenant()
+
+      - name: approval_workflow
+        operation: UPDATE
+        policy: |
+          tenant_id = current_tenant()
+          AND (
+            -- Creators can edit drafts
+            (created_by = current_user_id() AND approval_status IN ('not_submitted', 'revision_requested'))
+            -- Approvers can update status
+            OR (current_role() IN ('admin', 'owner') AND approval_status != 'approved')
+          )
+
+  marketing_event_access:
+    entity: marketing_event
+    policies:
+      - name: tenant_read_only
+        operation: SELECT
+        roles: [viewer, analyst, member, admin, owner]
+        policy: tenant_id = current_tenant()
+
+      - name: system_insert
+        operation: INSERT
+        roles: [system, service_account]
+        policy: true
+
+  connector_access:
+    entity: connector
+    policies:
+      - name: admins_only
+        operation: ALL
+        roles: [admin, owner]
+        policy: tenant_id = current_tenant()
+
+      - name: members_read
+        operation: SELECT
+        roles: [member]
+        policy: |
+          tenant_id = current_tenant()
+          AND credentials IS NULL  -- Hide sensitive data
+
+  # ---------------------------------------------------------------------------
+  # Workspace-level isolation
+  # ---------------------------------------------------------------------------
+  workspace_isolation:
+    description: "Optional workspace-level filtering"
+    entities: [campaign, creative, journey]
+    policy: |
+      workspace_id IN (
+        SELECT workspace_id
+        FROM workspace_membership
+        WHERE user_id = current_user_id()
+      )
+    enforcement: when_workspace_enabled
+
+  # ---------------------------------------------------------------------------
+  # Data classification
+  # ---------------------------------------------------------------------------
+  pii_protection:
+    entity: marketing_event
+    policy: |
+      CASE
+        WHEN current_role() IN ('analyst', 'viewer')
+        THEN contact_email IS NULL  -- Analysts see anonymized data
+        ELSE true
+      END
+
+# ==============================================================================
+# SECTION 5: RPCs (API ENDPOINTS)
+# ==============================================================================
+rpcs:
+  # ---------------------------------------------------------------------------
+  # CAMPAIGN OPERATIONS
+  # ---------------------------------------------------------------------------
+  create_campaign:
+    description: "Create a new marketing campaign"
+    ai_agent: AdsBot
+    method: POST
+    path: /api/campaigns
+    request:
+      name: string!
+      type: campaign_type!
+      brand_id: uuid!
+      workspace_id: uuid!
+      scheduled_start: timestamp
+      scheduled_end: timestamp
+      budget_planned: decimal
+      audience_segment_ids: uuid[]
+      channel_ids: channel_type[]
+      utm_source: string
+      utm_medium: string
+      utm_campaign: string
+      tags: string[]
+      metadata: jsonb
+    response:
+      campaign: campaign
+    validation:
+      - name_min_length: 3
+      - scheduled_start_future: scheduled_start > NOW() OR scheduled_start IS NULL
+    side_effects:
+      - create_default_workspace_folder
+      - notify_team_members
+
+  update_campaign_status:
+    description: "Update campaign lifecycle status"
+    ai_agent: AdsBot
+    method: PATCH
+    path: /api/campaigns/{campaign_id}/status
+    request:
+      campaign_id: uuid!
+      status: campaign_status!
+      comment: string
+    response:
+      campaign: campaign
+      previous_status: campaign_status
+    validation:
+      - valid_transition: |
+          CASE current_status
+            WHEN 'draft' THEN new_status IN ('pending_review', 'cancelled')
+            WHEN 'pending_review' THEN new_status IN ('approved', 'draft')
+            WHEN 'approved' THEN new_status IN ('scheduled', 'running', 'cancelled')
+            WHEN 'scheduled' THEN new_status IN ('running', 'paused', 'cancelled')
+            WHEN 'running' THEN new_status IN ('paused', 'completed', 'cancelled')
+            WHEN 'paused' THEN new_status IN ('running', 'cancelled')
+            ELSE false
+          END
+    audit: true
+
+  schedule_campaign:
+    description: "Schedule campaign for future execution"
+    ai_agent: AdsBot
+    method: POST
+    path: /api/campaigns/{campaign_id}/schedule
+    request:
+      campaign_id: uuid!
+      scheduled_start: timestamp!
+      scheduled_end: timestamp
+    response:
+      campaign: campaign
+      scheduled_jobs: job_reference[]
+    validation:
+      - start_future: scheduled_start > NOW()
+      - end_after_start: scheduled_end IS NULL OR scheduled_end > scheduled_start
+      - status_approved: campaign.status = 'approved'
+    side_effects:
+      - create_scheduler_jobs
+      - notify_stakeholders
+
+  # ---------------------------------------------------------------------------
+  # CREATIVE OPERATIONS
+  # ---------------------------------------------------------------------------
+  create_creative:
+    description: "Create campaign creative/content"
+    ai_agent: Marian
+    method: POST
+    path: /api/campaigns/{campaign_id}/creatives
+    request:
+      campaign_id: uuid!
+      name: string!
+      format: content_format!
+      subject_line: string
+      preview_text: string
+      body_html: string
+      body_plain: string
+      cta_text: string
+      cta_url: string
+      primary_asset_url: string
+      variant_group_id: uuid
+      variant_label: string
+      variant_weight: decimal
+      metadata: jsonb
+    response:
+      creative: creative
+
+  generate_creative_variants:
+    description: "AI-generate creative variants for A/B testing"
+    ai_agent: Marian
+    method: POST
+    path: /api/creatives/{creative_id}/generate-variants
+    request:
+      creative_id: uuid!
+      num_variants: integer!
+      focus_areas: string[]  # ['subject_line', 'cta', 'body', 'imagery']
+      brand_voice_emphasis: decimal  # 0-1
+      creativity_level: decimal  # 0-1
+    response:
+      variants: creative[]
+      generation_metadata:
+        model_version: string
+        generation_time_ms: integer
+        confidence_scores: decimal[]
+
+  submit_for_approval:
+    description: "Submit creative for approval workflow"
+    ai_agent: TestSprite
+    method: POST
+    path: /api/creatives/{creative_id}/submit
+    request:
+      creative_id: uuid!
+      comment: string
+    response:
+      creative: creative
+      workflow: approval_workflow
+    validation:
+      - status_valid: creative.approval_status IN ('not_submitted', 'revision_requested')
+      - content_complete: creative.body_html IS NOT NULL OR creative.body_plain IS NOT NULL
+
+  approve_creative:
+    description: "Approve or reject creative"
+    method: POST
+    path: /api/creatives/{creative_id}/review
+    roles: [admin, owner, approver]
+    request:
+      creative_id: uuid!
+      decision: string!  # 'approve' | 'reject' | 'request_revision'
+      comment: string
+    response:
+      creative: creative
+      workflow: approval_workflow
+    audit: true
+
+  # ---------------------------------------------------------------------------
+  # AUDIENCE OPERATIONS
+  # ---------------------------------------------------------------------------
+  create_segment:
+    description: "Create audience segment"
+    ai_agent: AdsBot
+    method: POST
+    path: /api/segments
+    request:
+      name: string!
+      description: string
+      segment_type: audience_segment_type!
+      is_dynamic: boolean
+      criteria: jsonb
+      double_optin_required: boolean
+      is_suppression_list: boolean
+      tags: string[]
+    response:
+      segment: audience_segment
+
+  refresh_segment:
+    description: "Recalculate dynamic segment membership"
+    ai_agent: AdsBot
+    method: POST
+    path: /api/segments/{segment_id}/refresh
+    request:
+      segment_id: uuid!
+    response:
+      segment: audience_segment
+      previous_count: integer
+      new_count: integer
+      added: integer
+      removed: integer
+      processing_time_ms: integer
+    async: true
+
+  # ---------------------------------------------------------------------------
+  # JOURNEY OPERATIONS
+  # ---------------------------------------------------------------------------
+  create_journey:
+    description: "Create marketing automation journey"
+    ai_agent: AdsBot
+    method: POST
+    path: /api/journeys
+    request:
+      name: string!
+      description: string
+      campaign_id: uuid
+      entry_trigger: event_trigger_type!
+      entry_segment_id: uuid
+      entry_criteria: jsonb
+      exit_criteria: jsonb
+      max_entries_per_contact: integer
+      re_entry_wait_days: integer
+    response:
+      journey: journey
+
+  add_journey_step:
+    description: "Add step to journey"
+    ai_agent: AdsBot
+    method: POST
+    path: /api/journeys/{journey_id}/steps
+    request:
+      journey_id: uuid!
+      step_order: integer!
+      name: string!
+      step_type: string!
+      config: jsonb!
+      parent_step_id: uuid
+      branch_label: string
+    response:
+      step: journey_step
+    validation:
+      - journey_editable: journey.status IN ('draft', 'paused')
+
+  activate_journey:
+    description: "Activate journey for execution"
+    ai_agent: AdsBot
+    method: POST
+    path: /api/journeys/{journey_id}/activate
+    request:
+      journey_id: uuid!
+      scheduled_start: timestamp
+    response:
+      journey: journey
+    validation:
+      - has_steps: journey.steps.count > 0
+      - has_entry_condition: journey.entry_trigger IS NOT NULL
+      - steps_valid: all_steps_have_valid_config()
+
+  # ---------------------------------------------------------------------------
+  # SEND OPERATIONS
+  # ---------------------------------------------------------------------------
+  send_campaign:
+    description: "Execute campaign send"
+    ai_agent: AdsBot
+    method: POST
+    path: /api/campaigns/{campaign_id}/send
+    request:
+      campaign_id: uuid!
+      segment_ids: uuid[]
+      test_mode: boolean
+      test_recipients: string[]
+    response:
+      job_id: uuid
+      queued_count: integer
+      estimated_completion: timestamp
+    validation:
+      - campaign_ready: campaign.status = 'approved' OR test_mode = true
+      - connector_healthy: channel_connector.status = 'connected'
+      - within_limits: queued_count <= connector.rate_limit_per_day
+    async: true
+    idempotent: true
+
+  check_send_status:
+    description: "Get send job status"
+    method: GET
+    path: /api/send-jobs/{job_id}
+    request:
+      job_id: uuid!
+    response:
+      job_id: uuid
+      status: string  # queued, sending, completed, failed
+      total: integer
+      sent: integer
+      delivered: integer
+      failed: integer
+      progress_percentage: decimal
+
+  # ---------------------------------------------------------------------------
+  # ANALYTICS & CES OPERATIONS
+  # ---------------------------------------------------------------------------
+  get_campaign_metrics:
+    description: "Get campaign performance metrics"
+    ai_agent: CESAI
+    method: GET
+    path: /api/campaigns/{campaign_id}/metrics
+    request:
+      campaign_id: uuid!
+      date_from: date
+      date_to: date
+      granularity: string  # 'hour', 'day', 'week', 'month'
+      channels: channel_type[]
+    response:
+      summary:
+        total_sends: integer
+        total_delivered: integer
+        total_opens: integer
+        total_clicks: integer
+        total_conversions: integer
+        total_revenue: decimal
+        total_cost: decimal
+        delivery_rate: decimal
+        open_rate: decimal
+        click_rate: decimal
+        conversion_rate: decimal
+        roi: decimal
+      time_series: campaign_metrics[]
+      by_channel: object
+
+  analyze_ces:
+    description: "Run Creative Effectiveness Score analysis"
+    ai_agent: CESAI
+    method: POST
+    path: /api/ces/analyze
+    request:
+      campaign_id: uuid
+      creative_id: uuid
+      analysis_type: string!  # 'pre_launch', 'in_flight', 'post_campaign'
+      include_benchmarks: boolean
+      benchmark_category: string
+    response:
+      analysis: ces_analysis
+      benchmarks:
+        category_avg: decimal
+        category_top_quartile: decimal
+        brand_avg: decimal
+      similar_campaigns: campaign[]
+    async: true
+
+  get_ces_insights:
+    description: "Get AI-generated CES insights"
+    ai_agent: CESAI
+    method: GET
+    path: /api/ces/insights
+    request:
+      campaign_id: uuid
+      brand_id: uuid
+      date_from: date
+      date_to: date
+      insight_types: string[]  # ['trends', 'opportunities', 'risks', 'recommendations']
+    response:
+      insights: object[]
+      trends:
+        ces_trend: string  # 'improving', 'stable', 'declining'
+        avg_ces_change: decimal
+      top_performing: campaign[]
+      improvement_areas: string[]
+
+  # ---------------------------------------------------------------------------
+  # EXPERIMENT OPERATIONS
+  # ---------------------------------------------------------------------------
+  create_experiment:
+    description: "Create A/B test experiment"
+    ai_agent: TestSprite
+    method: POST
+    path: /api/experiments
+    request:
+      campaign_id: uuid!
+      name: string!
+      description: string
+      hypothesis: string
+      test_type: string!
+      primary_metric: metric_type!
+      secondary_metrics: metric_type[]
+      confidence_level: decimal
+      minimum_detectable_effect: decimal
+      traffic_percentage: decimal
+    response:
+      experiment: experiment
+
+  add_experiment_variant:
+    description: "Add variant to experiment"
+    ai_agent: TestSprite
+    method: POST
+    path: /api/experiments/{experiment_id}/variants
+    request:
+      experiment_id: uuid!
+      name: string!
+      is_control: boolean
+      creative_id: uuid
+      config: jsonb
+      traffic_weight: decimal
+    response:
+      variant: experiment_variant
+
+  start_experiment:
+    description: "Start A/B test"
+    ai_agent: TestSprite
+    method: POST
+    path: /api/experiments/{experiment_id}/start
+    request:
+      experiment_id: uuid!
+    response:
+      experiment: experiment
+    validation:
+      - has_variants: experiment.variants.count >= 2
+      - has_control: experiment.variants.any(is_control = true)
+      - weights_valid: sum(variants.traffic_weight) = 100
+
+  get_experiment_results:
+    description: "Get A/B test results"
+    ai_agent: TestSprite
+    method: GET
+    path: /api/experiments/{experiment_id}/results
+    request:
+      experiment_id: uuid!
+    response:
+      experiment: experiment
+      variants: experiment_variant[]
+      statistical_analysis:
+        is_significant: boolean
+        confidence: decimal
+        p_value: decimal
+        lift: decimal
+        lift_confidence_interval: decimal[]
+        winner: uuid
+        recommendation: string
+
+  # ---------------------------------------------------------------------------
+  # CONNECTOR OPERATIONS
+  # ---------------------------------------------------------------------------
+  create_connector:
+    description: "Create external service connector"
+    method: POST
+    path: /api/connectors
+    roles: [admin, owner]
+    request:
+      name: string!
+      connector_type: string!
+      credentials: jsonb!
+      config: jsonb
+      rate_limit_per_second: integer
+      rate_limit_per_day: integer
+    response:
+      connector: connector
+    encryption:
+      - credentials
+
+  test_connector:
+    description: "Test connector connectivity"
+    method: POST
+    path: /api/connectors/{connector_id}/test
+    request:
+      connector_id: uuid!
+    response:
+      success: boolean
+      latency_ms: integer
+      error: string
+
+  # ---------------------------------------------------------------------------
+  # EXPORT OPERATIONS
+  # ---------------------------------------------------------------------------
+  export_campaign_report:
+    description: "Export campaign report"
+    method: POST
+    path: /api/campaigns/{campaign_id}/export
+    request:
+      campaign_id: uuid!
+      format: string!  # 'csv', 'pdf', 'xlsx'
+      sections: string[]  # ['summary', 'metrics', 'ces', 'timeline', 'creatives']
+      date_from: date
+      date_to: date
+    response:
+      download_url: string
+      expires_at: timestamp
+    async: true
+
+  create_share_link:
+    description: "Create shareable report link"
+    method: POST
+    path: /api/campaigns/{campaign_id}/share
+    request:
+      campaign_id: uuid!
+      expires_in_days: integer
+      password_protected: boolean
+      sections: string[]
+    response:
+      share_url: string
+      access_code: string
+      expires_at: timestamp
+
+# ==============================================================================
+# SECTION 6: UI TABS CONTRACT
+# ==============================================================================
+ui_tabs:
+  # ---------------------------------------------------------------------------
+  # MAIN NAVIGATION
+  # ---------------------------------------------------------------------------
+  campaigns:
+    label: "Campaigns"
+    icon: "megaphone"
+    path: "/campaigns"
+    description: "Campaign management hub"
+    permissions: [view_campaigns]
+    sub_tabs:
+      - list:
+          label: "All Campaigns"
+          path: "/campaigns"
+          view: v_campaign_dashboard
+          actions: [create, edit, duplicate, archive]
+          filters:
+            - status
+            - type
+            - brand_id
+            - date_range
+            - ces_tier
+          columns:
+            - name
+            - brand_name
+            - type
+            - status
+            - scheduled_start
+            - ces_score
+            - total_sends
+            - open_rate
+            - roi_calculated
+
+      - calendar:
+          label: "Calendar"
+          path: "/campaigns/calendar"
+          view_type: calendar
+          date_field: scheduled_start
+
+      - analytics:
+          label: "Analytics"
+          path: "/campaigns/analytics"
+          widgets:
+            - type: kpi_cards
+              metrics: [active_campaigns, total_sends, avg_open_rate, avg_roi]
+            - type: chart
+              chart_type: line
+              title: "Campaign Performance Trend"
+            - type: table
+              title: "Top Performing"
+              view: v_ces_leaderboard
+              limit: 10
+
+  journeys:
+    label: "Journeys"
+    icon: "git-branch"
+    path: "/journeys"
+    description: "Marketing automation flows"
+    permissions: [view_journeys]
+    sub_tabs:
+      - list:
+          label: "All Journeys"
+          path: "/journeys"
+          actions: [create, edit, duplicate, activate, pause]
+          filters: [status, entry_trigger]
+
+      - builder:
+          label: "Journey Builder"
+          path: "/journeys/{id}/builder"
+          component: JourneyFlowBuilder
+          features:
+            - drag_drop_steps
+            - visual_connections
+            - step_configuration
+            - preview_mode
+
+      - analytics:
+          label: "Journey Analytics"
+          path: "/journeys/{id}/analytics"
+          view: v_journey_analytics
+
+  audiences:
+    label: "Audiences"
+    icon: "users"
+    path: "/audiences"
+    description: "Segment management"
+    permissions: [view_audiences]
+    sub_tabs:
+      - segments:
+          label: "Segments"
+          path: "/audiences/segments"
+          actions: [create, edit, refresh, export]
+          filters: [segment_type, is_dynamic]
+
+      - builder:
+          label: "Segment Builder"
+          path: "/audiences/segments/{id}/builder"
+          component: SegmentCriteriaBuilder
+
+  creatives:
+    label: "Creatives"
+    icon: "palette"
+    path: "/creatives"
+    description: "Content library"
+    permissions: [view_creatives]
+    sub_tabs:
+      - library:
+          label: "Library"
+          path: "/creatives"
+          view_modes: [grid, list]
+          actions: [create, edit, duplicate, preview, submit_approval]
+          filters: [format, approval_status, campaign_id]
+
+      - approvals:
+          label: "Approvals"
+          path: "/creatives/approvals"
+          permissions: [approve_creatives]
+          filters: [approval_status]
+          actions: [approve, reject, request_revision]
+
+  experiments:
+    label: "Experiments"
+    icon: "flask"
+    path: "/experiments"
+    description: "A/B testing hub"
+    permissions: [view_experiments]
+    sub_tabs:
+      - list:
+          label: "All Experiments"
+          path: "/experiments"
+          filters: [status, test_type, campaign_id]
+
+      - results:
+          label: "Results"
+          path: "/experiments/{id}/results"
+          view: v_experiment_results
+          widgets:
+            - type: variant_comparison
+            - type: statistical_significance
+            - type: conversion_funnel
+
+  ces_intelligence:
+    label: "CES Intelligence"
+    icon: "brain"
+    path: "/ces"
+    description: "Creative effectiveness insights"
+    ai_agents: [CESAI, Marian]
+    permissions: [view_ces]
+    sub_tabs:
+      - dashboard:
+          label: "Dashboard"
+          path: "/ces"
+          widgets:
+            - type: ces_score_gauge
+              title: "Portfolio CES"
+            - type: chart
+              chart_type: bar
+              title: "CES by Category"
+            - type: chart
+              chart_type: radar
+              title: "8-Dimension Analysis"
+            - type: table
+              title: "CES Leaderboard"
+              view: v_ces_leaderboard
+
+      - analyze:
+          label: "Analyze"
+          path: "/ces/analyze"
+          component: CESAnalyzer
+          features:
+            - campaign_selector
+            - benchmark_comparison
+            - dimension_breakdown
+            - ai_insights
+
+      - benchmarks:
+          label: "Benchmarks"
+          path: "/ces/benchmarks"
+          datasets:
+            - ph_awards
+            - warc
+            - validated
+
+  promotions:
+    label: "Promotions"
+    icon: "tag"
+    path: "/promotions"
+    description: "Coupons and offers"
+    permissions: [view_promotions]
+    sub_tabs:
+      - list:
+          label: "All Promotions"
+          path: "/promotions"
+          filters: [promotion_type, is_active]
+          columns:
+            - name
+            - code
+            - promotion_type
+            - discount_value
+            - current_usage_count
+            - valid_until
+            - is_active
+
+      - analytics:
+          label: "Analytics"
+          path: "/promotions/analytics"
+          metrics: [total_redemptions, total_discount_given, avg_order_value_lift]
+
+  connectors:
+    label: "Connectors"
+    icon: "plug"
+    path: "/connectors"
+    description: "External integrations"
+    permissions: [manage_connectors]
+    sub_tabs:
+      - list:
+          label: "All Connectors"
+          path: "/connectors"
+          view: v_connector_health
+          actions: [create, edit, test, disable]
+
+      - logs:
+          label: "Activity Logs"
+          path: "/connectors/logs"
+          filters: [connector_id, status, date_range]
+
+  settings:
+    label: "Settings"
+    icon: "settings"
+    path: "/settings"
+    permissions: [manage_settings]
+    sub_tabs:
+      - general:
+          label: "General"
+          path: "/settings/general"
+
+      - brands:
+          label: "Brands"
+          path: "/settings/brands"
+
+      - team:
+          label: "Team"
+          path: "/settings/team"
+          permissions: [manage_team]
+
+      - compliance:
+          label: "Compliance"
+          path: "/settings/compliance"
+          features:
+            - opt_in_settings
+            - quiet_hours
+            - suppression_lists
+            - gdpr_controls
+
+# ==============================================================================
+# SECTION 7: AI AGENT INTEGRATION
+# ==============================================================================
+ai_agents:
+  AdsBot:
+    description: "Campaign Operations Agent"
+    capabilities:
+      - build_segments
+      - compile_journeys
+      - schedule_sends
+      - log_outcomes
+      - manage_promotions
+      - channel_orchestration
+    owned_entities:
+      - campaign
+      - journey
+      - journey_step
+      - audience_segment
+      - send_log
+      - promotion
+    rpcs:
+      - create_campaign
+      - update_campaign_status
+      - schedule_campaign
+      - create_segment
+      - refresh_segment
+      - create_journey
+      - add_journey_step
+      - activate_journey
+      - send_campaign
+    odoo_mapping:
+      - mail.mass_mailing
+      - marketing.campaign
+      - marketing.activity
+      - mailing.list
+
+  Marian:
+    description: "Creative & Copy Agent"
+    capabilities:
+      - generate_email_variants
+      - generate_sms_copy
+      - generate_social_posts
+      - subject_line_optimization
+      - cta_optimization
+      - brand_voice_enforcement
+      - content_localization
+    owned_entities:
+      - creative
+    rpcs:
+      - create_creative
+      - generate_creative_variants
+    integrations:
+      - brand_guidelines
+      - tone_of_voice
+      - content_templates
+
+  Echo:
+    description: "Signal & Triggering Agent"
+    capabilities:
+      - event_processing
+      - trigger_evaluation
+      - intent_extraction
+      - journey_progression
+      - real_time_personalization
+    owned_entities:
+      - marketing_event
+      - journey_step (execution)
+    events:
+      - form_submit
+      - page_view
+      - email_engagement
+      - purchase_signals
+      - segment_membership_change
+    odoo_mapping:
+      - marketing.automation.trigger
+      - website.track
+      - utm.mixin
+
+  CESAI:
+    description: "Effectiveness & ROI Agent"
+    capabilities:
+      - ces_scoring
+      - dimension_analysis
+      - attribution_modeling
+      - uplift_estimation
+      - trend_analysis
+      - benchmark_comparison
+      - roi_calculation
+      - award_likelihood_prediction
+    owned_entities:
+      - ces_analysis
+      - campaign_metrics
+    rpcs:
+      - get_campaign_metrics
+      - analyze_ces
+      - get_ces_insights
+    data_sources:
+      - ph_awards
+      - warc
+      - validated_campaigns
+
+  TestSprite:
+    description: "QA & Experiments Agent"
+    capabilities:
+      - ab_test_management
+      - statistical_analysis
+      - template_validation
+      - link_integrity_check
+      - deliverability_testing
+      - approval_workflow
+      - regression_detection
+    owned_entities:
+      - experiment
+      - experiment_variant
+      - approval_workflow
+    rpcs:
+      - create_experiment
+      - add_experiment_variant
+      - start_experiment
+      - get_experiment_results
+      - submit_for_approval
+    quality_checks:
+      - broken_links
+      - spam_score
+      - rendering_preview
+      - accessibility
+
+# ==============================================================================
+# SECTION 8: ODOO MODULE MAPPING
+# ==============================================================================
+odoo_mapping:
+  core_modules:
+    base:
+      description: "Base framework"
+      entities: [tenant (res.company), user (res.users)]
+
+    mail:
+      description: "Email engine"
+      entities: [creative (mail.template), send_log (mail.mail)]
+
+    contacts:
+      description: "Contact management"
+      entities: [audience_segment (res.partner.category)]
+
+    crm:
+      description: "Lead management"
+      integration: lead_capture_handoff
+
+    utm:
+      description: "UTM tracking"
+      fields: [utm_source, utm_medium, utm_campaign, utm_content, utm_term]
+
+    website:
+      description: "Website builder"
+      entities: [marketing_event (website.track)]
+
+    website_form:
+      description: "Form builder"
+      integration: form_to_lead
+
+  marketing_modules:
+    mass_mailing:
+      description: "Mass email campaigns"
+      entities:
+        - campaign (mail.mass_mailing.campaign)
+        - creative (mail.mass_mailing)
+        - audience_segment (mailing.list)
+        - marketing_event (mail.mail.statistics)
+
+    marketing_automation:
+      description: "Marketing journeys"
+      entities:
+        - journey (marketing.campaign)
+        - journey_step (marketing.activity)
+        - marketing_event (marketing.trace)
+
+  oca_modules:
+    mass-mailing:
+      repo: "https://github.com/OCA/mass-mailing.git"
+      key_addons:
+        - mass_mailing_custom_unsubscribe
+        - mass_mailing_partner
+        - mass_mailing_list_dynamic
+        - mass_mailing_resend
+
+    social:
+      repo: "https://github.com/OCA/social.git"
+      key_addons:
+        - mail_activity_board
+        - mail_tracking
+
+    sale-promotion:
+      repo: "https://github.com/OCA/sale-promotion.git"
+      key_addons:
+        - sale_coupon_selection_wizard
+        - sale_promotion_rule
+
+  commerce_modules:
+    sale:
+      description: "Sales orders"
+      integration: promotion_redemption
+
+    sale_coupon:
+      description: "Coupon management"
+      entities: [promotion (coupon.program)]
+
+# ==============================================================================
+# SECTION 9: MARKETPLACE NON-NEGOTIABLES
+# ==============================================================================
+marketplace_requirements:
+  unified_event_log:
+    description: "Every marketing interaction logged"
+    entity: marketing_event
+    required_events:
+      - send
+      - open
+      - click
+      - bounce
+      - unsubscribe
+      - form_submit
+      - conversion
+    retention: "configurable, default 2 years"
+    partitioning: monthly
+
+  idempotent_schedulers:
+    description: "No double-sends on retries"
+    entity: send_log
+    mechanism:
+      - idempotency_key (unique constraint)
+      - status tracking
+      - retry_count with max_retries
+      - exponential_backoff
+
+  attribution_basics:
+    description: "Full campaign attribution"
+    fields:
+      - utm_source
+      - utm_medium
+      - utm_campaign
+      - utm_content
+      - utm_term
+      - campaign_id
+      - creative_id
+      - variant_id
+    models:
+      - first_touch
+      - last_touch
+      - linear
+
+  governance:
+    description: "Audit and approval controls"
+    features:
+      - approval_workflow (entity)
+      - role_gates (RLS)
+      - audit_trail (all status changes logged)
+      - version_history (creatives)
+    compliance:
+      - double_opt_in
+      - unsubscribe_handling
+      - quiet_hours
+      - data_retention_policies
+
+  connectors:
+    description: "External service integration"
+    entity: connector
+    required_features:
+      - health_checks
+      - backoff_strategy
+      - rate_limiting
+      - credential_encryption
+      - error_logging
+    supported_types:
+      - smtp
+      - sms_gateway
+      - social_apis
+      - analytics
+
+  export_capabilities:
+    description: "Data portability"
+    formats:
+      - csv
+      - pdf
+      - xlsx
+    features:
+      - share_link_with_expiry
+      - password_protection
+      - section_selection

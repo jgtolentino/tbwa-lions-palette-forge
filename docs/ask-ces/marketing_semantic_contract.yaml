@@ -1,0 +1,323 @@
+version: "1.0.0"
+product: "Ask CES / Campaign Intelligence"
+domain: "marketing_os"
+owner: "InsightPulseAI"
+description: >
+  Semantic contract for Campaign Intelligence + Marketing OS:
+  campaigns, creatives, audiences, journeys, sends, events, analyses, benchmarks,
+  predictions, reports. Supabase-first with strict RLS.
+
+conventions:
+  ids: "uuid"
+  time:
+    timezone: "UTC"
+    timestamp: "timestamptz"
+  money:
+    currency: "ISO4217"
+  scoring:
+    ces_score: "0-100"
+    quality_score: "0-1"
+  soft_delete:
+    enabled: true
+    column: deleted_at
+
+enums:
+  campaign_status: [draft, scheduled, running, paused, completed, archived]
+  approval_state: [draft, in_review, approved, rejected]
+  channel_type: [video, display, social, email, sms, web, pr, ooh]
+  asset_type: [video, image, audio, html, copy, landing_page]
+  send_status: [queued, sent, failed, cancelled]
+  event_type: [delivered, opened, clicked, bounced, unsubscribed, complained, viewed, completed, form_submitted, purchase]
+  benchmark_scope: [industry, region, channel, brand, objective]
+  model_provider: [openai, anthropic, gemini, local, none]
+  role: [owner, admin, analyst, viewer]
+
+entities:
+
+  workspace:
+    table: ops.workspaces
+    description: "Tenant boundary."
+    fields:
+      id: { type: uuid, pk: true }
+      name: { type: text, required: true }
+      slug: { type: text, required: true, unique: true }
+      created_at: { type: timestamptz, default: now }
+      deleted_at: { type: timestamptz, nullable: true }
+
+  member:
+    table: ops.workspace_members
+    description: "Workspace membership + role."
+    fields:
+      id: { type: uuid, pk: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, required: true }
+      user_id: { type: uuid, required: true }
+      role: { type: role, required: true }
+      created_at: { type: timestamptz, default: now }
+      deleted_at: { type: timestamptz, nullable: true }
+
+  campaign:
+    table: marketing.campaigns
+    description: "Campaign master record."
+    fields:
+      id: { type: uuid, pk: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, required: true }
+      name: { type: text, required: true }
+      brand: { type: text, required: true }
+      industry: { type: text, required: true }
+      objective: { type: text, required: true }
+      channel: { type: channel_type, required: true }
+      status: { type: campaign_status, required: true, default: draft }
+      approval_state: { type: approval_state, required: true, default: draft }
+      start_date: { type: date, nullable: true }
+      end_date: { type: date, nullable: true }
+      budget_amount: { type: numeric, nullable: true }
+      budget_currency: { type: text, nullable: true }
+      tags: { type: jsonb, nullable: true, example: ["launch","brand-building"] }
+      metadata: { type: jsonb, nullable: true }
+      created_by: { type: uuid, required: true }
+      created_at: { type: timestamptz, default: now }
+      updated_at: { type: timestamptz, default: now }
+      deleted_at: { type: timestamptz, nullable: true }
+
+  creative:
+    table: marketing.creatives
+    description: "Creative concept/version within a campaign."
+    fields:
+      id: { type: uuid, pk: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, required: true }
+      campaign_id: { type: uuid, fk: marketing.campaigns.id, required: true }
+      name: { type: text, required: true }
+      version: { type: text, required: true, example: "v1" }
+      asset_primary_id: { type: uuid, fk: marketing.assets.id, nullable: true }
+      message: { type: text, nullable: true }
+      target_audience: { type: text, nullable: true }
+      created_at: { type: timestamptz, default: now }
+      updated_at: { type: timestamptz, default: now }
+      deleted_at: { type: timestamptz, nullable: true }
+
+  asset:
+    table: marketing.assets
+    description: "Creative files + references."
+    fields:
+      id: { type: uuid, pk: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, required: true }
+      campaign_id: { type: uuid, fk: marketing.campaigns.id, required: true }
+      creative_id: { type: uuid, fk: marketing.creatives.id, nullable: true }
+      type: { type: asset_type, required: true }
+      title: { type: text, nullable: true }
+      url: { type: text, nullable: true }
+      storage_path: { type: text, nullable: true }
+      mime_type: { type: text, nullable: true }
+      duration_seconds: { type: int, nullable: true }
+      checksum: { type: text, nullable: true }
+      meta: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, default: now }
+      deleted_at: { type: timestamptz, nullable: true }
+
+  audience:
+    table: marketing.audiences
+    description: "Audience definition / segment container."
+    fields:
+      id: { type: uuid, pk: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, required: true }
+      name: { type: text, required: true }
+      description: { type: text, nullable: true }
+      definition: { type: jsonb, required: true, example: {"age":[25,34],"geo":["NCR"],"interests":["sports"]} }
+      created_at: { type: timestamptz, default: now }
+      deleted_at: { type: timestamptz, nullable: true }
+
+  journey:
+    table: marketing.journeys
+    description: "Multi-step marketing automation journey."
+    fields:
+      id: { type: uuid, pk: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, required: true }
+      campaign_id: { type: uuid, fk: marketing.campaigns.id, required: true }
+      name: { type: text, required: true }
+      status: { type: campaign_status, required: true, default: draft }
+      entry_rules: { type: jsonb, required: true, example: {"event":"form_submitted","within_days":30} }
+      created_at: { type: timestamptz, default: now }
+      updated_at: { type: timestamptz, default: now }
+      deleted_at: { type: timestamptz, nullable: true }
+
+  journey_step:
+    table: marketing.journey_steps
+    description: "Nodes/steps inside a journey graph."
+    fields:
+      id: { type: uuid, pk: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, required: true }
+      journey_id: { type: uuid, fk: marketing.journeys.id, required: true }
+      step_key: { type: text, required: true, example: "email_1" }
+      type: { type: text, required: true, example: "send_email|wait|if|webhook|score" }
+      config: { type: jsonb, required: true }
+      next_steps: { type: jsonb, nullable: true, example: ["wait_1"] }
+      created_at: { type: timestamptz, default: now }
+      deleted_at: { type: timestamptz, nullable: true }
+
+  send:
+    table: marketing.sends
+    description: "Outbound send attempts (email/sms/social)."
+    fields:
+      id: { type: uuid, pk: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, required: true }
+      campaign_id: { type: uuid, fk: marketing.campaigns.id, required: true }
+      creative_id: { type: uuid, fk: marketing.creatives.id, nullable: true }
+      audience_id: { type: uuid, fk: marketing.audiences.id, nullable: true }
+      channel: { type: channel_type, required: true }
+      status: { type: send_status, required: true, default: queued }
+      scheduled_at: { type: timestamptz, nullable: true }
+      sent_at: { type: timestamptz, nullable: true }
+      provider: { type: text, nullable: true }
+      provider_message_id: { type: text, nullable: true }
+      error: { type: text, nullable: true }
+      meta: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, default: now }
+      deleted_at: { type: timestamptz, nullable: true }
+
+  event:
+    table: marketing.events
+    description: "Unified engagement event log."
+    fields:
+      id: { type: uuid, pk: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, required: true }
+      campaign_id: { type: uuid, fk: marketing.campaigns.id, required: true }
+      send_id: { type: uuid, fk: marketing.sends.id, nullable: true }
+      creative_id: { type: uuid, fk: marketing.creatives.id, nullable: true }
+      event_type: { type: event_type, required: true }
+      occurred_at: { type: timestamptz, required: true }
+      user_ref: { type: text, nullable: true, description: "Hashed external user key" }
+      properties: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, default: now }
+
+  analysis_job:
+    table: ces.analysis_jobs
+    description: "Video/creative analysis requests (async)."
+    fields:
+      id: { type: uuid, pk: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, required: true }
+      campaign_id: { type: uuid, fk: marketing.campaigns.id, required: true }
+      asset_id: { type: uuid, fk: marketing.assets.id, required: true }
+      status: { type: text, required: true, example: "queued|running|succeeded|failed" }
+      provider: { type: model_provider, required: true, default: none }
+      requested_by: { type: uuid, required: true }
+      requested_at: { type: timestamptz, default: now }
+      completed_at: { type: timestamptz, nullable: true }
+      error: { type: text, nullable: true }
+      meta: { type: jsonb, nullable: true }
+
+  analysis_result:
+    table: ces.analysis_results
+    description: "Structured outputs for CES/creative analysis."
+    fields:
+      id: { type: uuid, pk: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, required: true }
+      job_id: { type: uuid, fk: ces.analysis_jobs.id, required: true }
+      campaign_id: { type: uuid, fk: marketing.campaigns.id, required: true }
+      asset_id: { type: uuid, fk: marketing.assets.id, required: true }
+      ces_score: { type: numeric, nullable: true }
+      roi_predicted: { type: numeric, nullable: true }
+      feature_importance: { type: jsonb, nullable: true, example: [{"name":"visual_quality","weight":0.34}] }
+      scene_breakdown: { type: jsonb, nullable: true }
+      brand_detection: { type: jsonb, nullable: true }
+      attention_heatmaps: { type: jsonb, nullable: true }
+      recommendations: { type: jsonb, nullable: true }
+      created_at: { type: timestamptz, default: now }
+
+  benchmark:
+    table: ces.benchmarks
+    description: "Benchmark tables for industries/channels/regions."
+    fields:
+      id: { type: uuid, pk: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, nullable: true, description: "NULL = global" }
+      scope: { type: benchmark_scope, required: true }
+      key: { type: text, required: true, example: "Automotive|video|PH" }
+      avg_ces: { type: numeric, nullable: true }
+      top_quartile_ces: { type: numeric, nullable: true }
+      avg_roi: { type: numeric, nullable: true }
+      updated_at: { type: timestamptz, default: now }
+
+measures:
+  - id: total_campaigns
+    sql: "count(distinct c.id)"
+    description: "Count of campaigns"
+  - id: avg_ces
+    sql: "avg(ar.ces_score)"
+    description: "Average CES score"
+  - id: total_budget
+    sql: "sum(coalesce(c.budget_amount,0))"
+    description: "Total budget amount (currency-specific)"
+  - id: avg_roi
+    sql: "avg(ar.roi_predicted)"
+    description: "Average ROI predicted"
+  - id: top_performers
+    sql: "count(*) filter (where ar.ces_score >= 80)"
+    description: "Campaigns with CES >= 80"
+  - id: need_attention
+    sql: "count(*) filter (where ar.ces_score < 60)"
+    description: "Campaigns with CES < 60"
+
+kpis:
+  dashboard:
+    - total_campaigns
+    - avg_ces
+    - total_budget
+    - avg_roi
+    - top_performers
+    - need_attention
+
+pages:
+  - id: dashboard
+    tabs:
+      - id: overview
+        widgets: [kpi_row, ces_distribution, performance_trends]
+      - id: performance
+        widgets: [radar, kpi_breakdown, channel_mix]
+      - id: features
+        widgets: [feature_importance, recommendations]
+      - id: benchmarks
+        widgets: [industry_benchmarks, peer_compare]
+      - id: campaigns
+        widgets: [recent_campaigns, campaign_table]
+  - id: video_analysis
+    tabs:
+      - id: upload
+        widgets: [upload_file, add_url, job_queue, recent_results]
+  - id: ask_ces
+    tabs:
+      - id: chat
+        widgets: [chat, citations, actions]
+      - id: insights
+        widgets: [insight_cards, saved_queries]
+      - id: creative
+        widgets: [creative_tools, variants, scoring]
+      - id: audience
+        widgets: [segmentation, personas, geo]
+
+rls:
+  policy: >
+    All rows in marketing.*, ces.* must be filtered by workspace_id.
+    Access granted if auth.uid() is a member of ops.workspace_members for that workspace_id.
+  roles:
+    owner: "full access"
+    admin: "full access"
+    analyst: "read/write marketing + read ces results"
+    viewer: "read-only"
+
+views:
+  - name: semantic.v_campaign_kpis
+    description: "Campaign-level rollups (CES, ROI, events)."
+  - name: semantic.v_dashboard_kpis
+    description: "Workspace dashboard KPIs by time filter."
+  - name: semantic.v_recent_campaigns
+    description: "Recent campaigns list with status, CES, ROI."
+
+rpcs:
+  - name: semantic.get_dashboard_kpis
+    args: [workspace_id, date_from, date_to]
+    returns: "kpi object"
+  - name: semantic.get_recent_campaigns
+    args: [workspace_id, limit]
+    returns: "table"
+  - name: semantic.get_campaign_detail
+    args: [workspace_id, campaign_id]
+    returns: "json"
