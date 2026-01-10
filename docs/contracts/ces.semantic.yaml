@@ -1,0 +1,221 @@
+# CES (Creative Effectiveness System) Semantic Contract
+# Owned by: tbwa-lions-palette-forge
+# Schema: ces.*
+
+version: "1.0"
+schema: ces
+owner: tbwa-lions-palette-forge
+
+entities:
+  assets:
+    description: Creative assets with metadata and processing status
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true, fk: ops.workspaces.id }
+      campaign_id: { type: uuid, fk: marketing.campaigns.id }
+      name: { type: text, required: true }
+      type: { type: enum, values: [image, video, audio, document, html] }
+      mime_type: { type: text, required: true }
+      content_hash: { type: text, required: true, description: "SHA-256 for dedup" }
+      storage_path: { type: text, required: true }
+      storage_bucket: { type: text, required: true }
+      file_size: { type: bigint, required: true }
+      version: { type: integer, default: 1 }
+      parent_asset_id: { type: uuid, fk: ces.assets.id }
+      status: { type: enum, values: [uploaded, processing, features_ready, scored, failed] }
+      error_message: { type: text }
+      metadata: { type: jsonb }
+      created_at: { type: timestamptz, required: true }
+      updated_at: { type: timestamptz, required: true }
+      processed_at: { type: timestamptz }
+      scored_at: { type: timestamptz }
+    indexes:
+      - columns: [workspace_id, status]
+      - columns: [content_hash]
+        unique: true
+      - columns: [campaign_id]
+    rls:
+      - policy: workspace_isolation
+        using: "workspace_id IN (SELECT workspace_id FROM ops.workspace_members WHERE user_id = auth.uid())"
+
+  asset_features:
+    description: Extracted features per asset and model version
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      asset_id: { type: uuid, required: true, fk: ces.assets.id }
+      feature_type: { type: enum, values: [vision, audio, text, multimodal] }
+      model_id: { type: uuid, required: true, fk: ces.models.id }
+      model_version: { type: text, required: true }
+      features: { type: jsonb, required: true, description: "Feature vector" }
+      extraction_time_ms: { type: integer }
+      confidence: { type: numeric, precision: [4, 3] }
+      created_at: { type: timestamptz, required: true }
+    indexes:
+      - columns: [asset_id, model_id]
+        unique: true
+    rls:
+      - policy: via_asset
+        using: "asset_id IN (SELECT id FROM ces.assets WHERE workspace_id IN (SELECT workspace_id FROM ops.workspace_members WHERE user_id = auth.uid()))"
+
+  scores:
+    description: Immutable CES scores with dimension breakdown
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      asset_id: { type: uuid, required: true, fk: ces.assets.id }
+      workspace_id: { type: uuid, required: true, fk: ops.workspaces.id }
+      model_id: { type: uuid, required: true, fk: ces.models.id }
+      model_version: { type: text, required: true }
+      feature_version: { type: text, required: true }
+      total_score: { type: numeric, precision: [5, 2], description: "0-100" }
+      confidence: { type: numeric, precision: [4, 3], description: "0-1" }
+      dimensions: { type: jsonb, required: true, description: "Score breakdown" }
+      run_id: { type: uuid, required: true, fk: ops.runs.id }
+      computed_at: { type: timestamptz, required: true }
+    indexes:
+      - columns: [asset_id, computed_at]
+      - columns: [workspace_id, computed_at]
+    rls:
+      - policy: workspace_isolation
+        using: "workspace_id IN (SELECT workspace_id FROM ops.workspace_members WHERE user_id = auth.uid())"
+    immutable: true
+
+  score_dimensions:
+    description: Reference table for score dimension definitions
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, description: "null = global" }
+      name: { type: text, required: true }
+      code: { type: text, required: true }
+      description: { type: text }
+      default_weight: { type: numeric, precision: [3, 2] }
+      criteria: { type: jsonb }
+      created_at: { type: timestamptz, required: true }
+    indexes:
+      - columns: [code]
+        unique: true
+
+  models:
+    description: Model registry with version tracking
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, fk: ops.workspaces.id, description: "null = global" }
+      name: { type: text, required: true }
+      type: { type: enum, values: [feature_extractor, scorer, recommender] }
+      version: { type: text, required: true }
+      config: { type: jsonb }
+      accuracy: { type: numeric, precision: [4, 3] }
+      latency_p50_ms: { type: integer }
+      latency_p99_ms: { type: integer }
+      status: { type: enum, values: [active, deprecated, testing] }
+      created_at: { type: timestamptz, required: true }
+      updated_at: { type: timestamptz, required: true }
+      deprecated_at: { type: timestamptz }
+    indexes:
+      - columns: [name, version]
+        unique: true
+
+  exposures:
+    description: When and where assets were shown (for attribution)
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true, fk: ops.workspaces.id }
+      campaign_id: { type: uuid, required: true, fk: marketing.campaigns.id }
+      asset_id: { type: uuid, required: true, fk: ces.assets.id }
+      channel: { type: enum, values: [digital_display, social_media, video, print, ooh, retail_pos, email, other] }
+      placement: { type: text }
+      platform: { type: text }
+      start_time: { type: timestamptz, required: true }
+      end_time: { type: timestamptz }
+      geography_id: { type: uuid }
+      impressions: { type: bigint }
+      reach: { type: bigint }
+      frequency: { type: numeric, precision: [6, 2] }
+      attribution_window_days: { type: integer, default: 7 }
+      created_at: { type: timestamptz, required: true }
+    indexes:
+      - columns: [campaign_id, asset_id]
+      - columns: [start_time, end_time]
+    rls:
+      - policy: workspace_isolation
+        using: "workspace_id IN (SELECT workspace_id FROM ops.workspace_members WHERE user_id = auth.uid())"
+
+  recommendations:
+    description: Prioritized improvement actions for assets
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      asset_id: { type: uuid, required: true, fk: ces.assets.id }
+      workspace_id: { type: uuid, required: true, fk: ops.workspaces.id }
+      type: { type: enum, values: [visual_improvement, copy_improvement, brand_alignment, audience_targeting, channel_optimization, timing_optimization] }
+      priority: { type: enum, values: [critical, high, medium, low] }
+      title: { type: text, required: true }
+      description: { type: text }
+      action_items: { type: jsonb }
+      expected_score_lift: { type: numeric, precision: [5, 2] }
+      confidence: { type: numeric, precision: [4, 3] }
+      based_on_dimensions: { type: jsonb }
+      peer_comparison: { type: jsonb }
+      status: { type: enum, values: [pending, accepted, rejected, implemented] }
+      created_at: { type: timestamptz, required: true }
+      acted_on_at: { type: timestamptz }
+    indexes:
+      - columns: [asset_id, priority]
+      - columns: [workspace_id, status]
+    rls:
+      - policy: workspace_isolation
+        using: "workspace_id IN (SELECT workspace_id FROM ops.workspace_members WHERE user_id = auth.uid())"
+
+  runs:
+    description: CES pipeline execution tracking
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true, fk: ops.workspaces.id }
+      asset_id: { type: uuid, required: true, fk: ces.assets.id }
+      stage: { type: enum, values: [ingestion, feature_extraction, scoring, recommendation] }
+      status: { type: enum, values: [pending, running, completed, failed, cancelled] }
+      progress_percent: { type: integer, default: 0 }
+      current_step: { type: text }
+      feature_ids: { type: uuid[], description: "Array of feature IDs" }
+      score_id: { type: uuid, fk: ces.scores.id }
+      recommendation_ids: { type: uuid[], description: "Array of recommendation IDs" }
+      started_at: { type: timestamptz, required: true }
+      completed_at: { type: timestamptz }
+      duration_ms: { type: integer }
+      error_message: { type: text }
+      error_details: { type: jsonb }
+      retry_count: { type: integer, default: 0 }
+    indexes:
+      - columns: [asset_id, stage]
+      - columns: [workspace_id, status]
+    rls:
+      - policy: workspace_isolation
+        using: "workspace_id IN (SELECT workspace_id FROM ops.workspace_members WHERE user_id = auth.uid())"
+
+functions:
+  compute_score:
+    description: Compute CES score for an asset
+    params:
+      - name: p_asset_id
+        type: uuid
+      - name: p_model_id
+        type: uuid
+    returns: uuid
+    security: invoker
+
+  get_recommendations:
+    description: Get prioritized recommendations for an asset
+    params:
+      - name: p_asset_id
+        type: uuid
+      - name: p_limit
+        type: integer
+        default: 5
+    returns: setof ces.recommendations
+    security: invoker

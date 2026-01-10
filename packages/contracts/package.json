@@ -1,0 +1,48 @@
+{
+  "name": "@tbwa/contracts",
+  "version": "1.0.0",
+  "description": "Shared contracts between CES (Palette Forge) and Scout (Agency Databank)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./ces": {
+      "import": "./dist/ces.js",
+      "types": "./dist/ces.d.ts"
+    },
+    "./scout": {
+      "import": "./dist/scout.js",
+      "types": "./dist/scout.d.ts"
+    },
+    "./shared": {
+      "import": "./dist/shared.js",
+      "types": "./dist/shared.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  },
+  "keywords": [
+    "tbwa",
+    "ces",
+    "scout",
+    "contracts",
+    "types"
+  ],
+  "license": "UNLICENSED",
+  "private": true
+}
