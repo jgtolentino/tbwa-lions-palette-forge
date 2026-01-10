@@ -1,0 +1,158 @@
+# Scout (Retail Analytics) Semantic Contract
+# Owned by: tbwa-agency-databank
+# Schema: scout.*
+#
+# NOTE: This file is for reference/alignment only.
+# The canonical implementation lives in tbwa-agency-databank.
+
+version: "1.0"
+schema: scout
+owner: tbwa-agency-databank
+
+entities:
+  transactions:
+    description: Retail transactions with CES attribution fields
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true, fk: ops.workspaces.id }
+      transaction_id: { type: text, required: true }
+      pos_terminal_id: { type: text }
+      store_id: { type: uuid, required: true, fk: scout.stores.id }
+      customer_id: { type: uuid, fk: scout.customers.id }
+      customer_segment: { type: text }
+      items: { type: jsonb, required: true }
+      total_amount: { type: numeric, precision: [12, 2], required: true }
+      currency: { type: text, default: "USD" }
+      transaction_time: { type: timestamptz, required: true }
+
+      # CES Attribution Fields (JOIN CONTRACT)
+      campaign_id: { type: uuid, fk: marketing.campaigns.id }
+      asset_id: { type: uuid, fk: ces.assets.id }
+      exposure_id: { type: uuid, fk: ces.exposures.id }
+      campaign_influenced: { type: boolean }
+      handshake_score: { type: numeric, precision: [4, 3] }
+      attribution_confidence: { type: numeric, precision: [4, 3] }
+
+      # Derived insights
+      combo_basket: { type: boolean }
+      substitution_event: { type: boolean }
+
+      created_at: { type: timestamptz, required: true }
+      updated_at: { type: timestamptz, required: true }
+    indexes:
+      - columns: [workspace_id, transaction_time]
+      - columns: [campaign_id]
+      - columns: [asset_id]
+      - columns: [exposure_id]
+    rls:
+      - policy: workspace_isolation
+        using: "workspace_id IN (SELECT workspace_id FROM ops.workspace_members WHERE user_id = auth.uid())"
+
+  stores:
+    description: Store locations
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true }
+      name: { type: text, required: true }
+      code: { type: text, required: true }
+      type: { type: enum, values: [flagship, standard, express, pop_up, franchise] }
+      address: { type: text }
+      city: { type: text }
+      region: { type: text }
+      country: { type: text }
+      latitude: { type: numeric, precision: [10, 7] }
+      longitude: { type: numeric, precision: [10, 7] }
+      geography_id: { type: uuid }
+      size_sqm: { type: integer }
+      opened_at: { type: timestamptz }
+      odoo_warehouse_id: { type: integer }
+      created_at: { type: timestamptz, required: true }
+      updated_at: { type: timestamptz, required: true }
+
+  customers:
+    description: Anonymized customer data
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true }
+      customer_key: { type: text, required: true }
+      segment: { type: text }
+      total_transactions: { type: integer, default: 0 }
+      total_spend: { type: numeric, precision: [12, 2], default: 0 }
+      first_transaction_at: { type: timestamptz }
+      last_transaction_at: { type: timestamptz }
+      preferred_store_id: { type: uuid }
+      preferred_brands: { type: uuid[] }
+      odoo_partner_id: { type: integer }
+      created_at: { type: timestamptz, required: true }
+      updated_at: { type: timestamptz, required: true }
+
+  attributions:
+    description: Campaign attribution records
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true }
+      transaction_id: { type: uuid, required: true, fk: scout.transactions.id }
+      campaign_id: { type: uuid, required: true, fk: marketing.campaigns.id }
+      asset_id: { type: uuid, fk: ces.assets.id }
+      exposure_id: { type: uuid, fk: ces.exposures.id }
+      model: { type: enum, values: [first_touch, last_touch, linear, time_decay, position_based] }
+      weight: { type: numeric, precision: [4, 3] }
+      attributed_revenue: { type: numeric, precision: [12, 2] }
+      attributed_units: { type: integer }
+      confidence: { type: numeric, precision: [4, 3] }
+      created_at: { type: timestamptz, required: true }
+
+join_contract:
+  description: |
+    Fields that enable CES ↔ Scout integration.
+    These fields in scout.transactions link to CES entities:
+    - campaign_id → marketing.campaigns.id
+    - asset_id → ces.assets.id
+    - exposure_id → ces.exposures.id
+  fields:
+    - name: campaign_id
+      source_table: scout.transactions
+      target_table: marketing.campaigns
+      description: Links transaction to campaign
+    - name: asset_id
+      source_table: scout.transactions
+      target_table: ces.assets
+      description: Links transaction to creative asset
+    - name: exposure_id
+      source_table: scout.transactions
+      target_table: ces.exposures
+      description: Links transaction to specific exposure event
+
+functions:
+  get_campaign_performance:
+    description: Get aggregated campaign performance metrics
+    params:
+      - name: p_campaign_id
+        type: uuid
+      - name: p_start_date
+        type: date
+      - name: p_end_date
+        type: date
+      - name: p_granularity
+        type: text
+        default: "day"
+    returns: setof jsonb
+    security: invoker
+
+  get_score_correlation:
+    description: Correlate CES scores with retail outcomes
+    params:
+      - name: p_workspace_id
+        type: uuid
+      - name: p_min_impressions
+        type: integer
+        default: 100
+      - name: p_date_range_days
+        type: integer
+        default: 30
+    returns: setof jsonb
+    security: invoker

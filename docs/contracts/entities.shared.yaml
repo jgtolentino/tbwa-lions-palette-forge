@@ -1,0 +1,180 @@
+# Shared Entities Semantic Contract
+# These entities are referenced by multiple schemas/repos
+
+version: "1.0"
+schemas:
+  - ops
+  - marketing
+  - semantic
+
+# ops.* schema - Shared operational entities
+ops:
+  workspaces:
+    description: Multi-tenant workspace isolation
+    owner: shared
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      name: { type: text, required: true }
+      slug: { type: text, required: true, unique: true }
+      owner_id: { type: uuid, required: true }
+      settings: { type: jsonb }
+      created_at: { type: timestamptz, required: true }
+      updated_at: { type: timestamptz, required: true }
+
+  workspace_members:
+    description: User membership in workspaces
+    owner: shared
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true, fk: ops.workspaces.id }
+      user_id: { type: uuid, required: true }
+      role: { type: enum, values: [owner, admin, analyst, viewer] }
+      joined_at: { type: timestamptz, required: true }
+    indexes:
+      - columns: [workspace_id, user_id]
+        unique: true
+
+  runs:
+    description: Pipeline execution audit trail
+    owner: shared
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true, fk: ops.workspaces.id }
+      pipeline_name: { type: text, required: true }
+      status: { type: enum, values: [pending, running, completed, failed, cancelled] }
+      started_at: { type: timestamptz }
+      completed_at: { type: timestamptz }
+      error_message: { type: text }
+      metadata: { type: jsonb }
+      created_at: { type: timestamptz, required: true }
+
+  audit_events:
+    description: Entity-level audit log
+    owner: shared
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true, fk: ops.workspaces.id }
+      entity_type: { type: text, required: true }
+      entity_id: { type: uuid, required: true }
+      action: { type: enum, values: [create, update, delete, score, sync] }
+      actor_id: { type: uuid }
+      actor_type: { type: enum, values: [user, system, pipeline] }
+      changes: { type: jsonb }
+      metadata: { type: jsonb }
+      created_at: { type: timestamptz, required: true }
+
+# marketing.* schema - Campaign and creative management
+marketing:
+  campaigns:
+    description: Marketing campaigns
+    owner: tbwa-lions-palette-forge (primary)
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true, fk: ops.workspaces.id }
+      name: { type: text, required: true }
+      description: { type: text }
+      status: { type: enum, values: [draft, pending_approval, approved, active, paused, completed, archived] }
+      start_date: { type: timestamptz }
+      end_date: { type: timestamptz }
+      budget: { type: numeric, precision: [12, 2] }
+      objectives: { type: jsonb }
+      created_by: { type: uuid, required: true }
+      created_at: { type: timestamptz, required: true }
+      updated_at: { type: timestamptz, required: true }
+      # Odoo sync
+      odoo_utm_campaign_id: { type: integer }
+      odoo_synced_at: { type: timestamptz }
+
+  creatives:
+    description: Creative assignments to campaigns
+    owner: tbwa-lions-palette-forge (primary)
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      campaign_id: { type: uuid, required: true, fk: marketing.campaigns.id }
+      asset_id: { type: uuid, required: true, fk: ces.assets.id }
+      role: { type: text }
+      status: { type: enum, values: [draft, approved, active, paused] }
+      created_at: { type: timestamptz, required: true }
+
+  assets:
+    description: Asset references (links to ces.assets)
+    owner: tbwa-lions-palette-forge (primary)
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true, fk: ops.workspaces.id }
+      name: { type: text, required: true }
+      type: { type: text }
+      url: { type: text }
+      # This is a denormalized reference; ces.assets is authoritative
+      ces_asset_id: { type: uuid, fk: ces.assets.id }
+      created_at: { type: timestamptz, required: true }
+      updated_at: { type: timestamptz, required: true }
+
+  performance_metrics:
+    description: Campaign performance aggregates
+    owner: shared
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      campaign_id: { type: uuid, required: true, fk: marketing.campaigns.id }
+      metric_date: { type: date, required: true }
+      impressions: { type: bigint }
+      clicks: { type: bigint }
+      conversions: { type: bigint }
+      spend: { type: numeric, precision: [12, 2] }
+      revenue: { type: numeric, precision: [12, 2] }
+      metadata: { type: jsonb }
+      created_at: { type: timestamptz, required: true }
+
+# semantic.* schema - Vector embeddings and search
+semantic:
+  embeddings:
+    description: Vector embeddings for semantic search
+    owner: shared
+    primary_key: id
+    columns:
+      id: { type: uuid, required: true }
+      workspace_id: { type: uuid, required: true, fk: ops.workspaces.id }
+      source_type: { type: text, required: true, description: "asset, document, conversation" }
+      source_id: { type: uuid, required: true }
+      chunk_index: { type: integer, default: 0 }
+      content: { type: text }
+      embedding: { type: vector, dimensions: 1536 }
+      model_version: { type: text, required: true }
+      created_at: { type: timestamptz, required: true }
+    indexes:
+      - columns: [embedding]
+        type: ivfflat
+        method: cosine
+
+# Cross-schema references
+references:
+  - from: ces.assets.workspace_id
+    to: ops.workspaces.id
+  - from: ces.assets.campaign_id
+    to: marketing.campaigns.id
+  - from: ces.scores.workspace_id
+    to: ops.workspaces.id
+  - from: ces.scores.run_id
+    to: ops.runs.id
+  - from: ces.exposures.campaign_id
+    to: marketing.campaigns.id
+  - from: scout.transactions.workspace_id
+    to: ops.workspaces.id
+  - from: scout.transactions.campaign_id
+    to: marketing.campaigns.id
+  - from: scout.transactions.asset_id
+    to: ces.assets.id
+  - from: scout.transactions.exposure_id
+    to: ces.exposures.id
+  - from: marketing.campaigns.workspace_id
+    to: ops.workspaces.id
+  - from: semantic.embeddings.workspace_id
+    to: ops.workspaces.id
